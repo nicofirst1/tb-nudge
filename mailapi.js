@@ -36,6 +36,13 @@ async function mapConcurrent(items, limit, fn) {
   return results;
 }
 
+// Message-IDs show up both as "<id>" (raw header text) and "id" (parsed
+// headerMessageId field) depending on where Thunderbird's API gives them to
+// us. Strip the brackets so both forms compare equal.
+function normalizeMessageId(id) {
+  return (id || "").trim().replace(/^</, "").replace(/>$/, "");
+}
+
 // One pass over `folders`: maps every Message-ID mentioned in any candidate's
 // References/In-Reply-To to that candidate. Replaces the naive approach of
 // re-scanning + re-fetching all inbox messages for every single sent message
@@ -48,7 +55,8 @@ async function buildReplyIndex(folders, sinceDate, log) {
     const candidates = await collectAll(list);
     await mapConcurrent(candidates, 8, async (candidate) => {
       const refs = await headerRefs(candidate.id);
-      for (const token of refs.split(/\s+/).filter(Boolean)) {
+      for (const rawToken of refs.split(/\s+/).filter(Boolean)) {
+        const token = normalizeMessageId(rawToken);
         if (!index.has(token)) index.set(token, candidate);
       }
       done++;
@@ -61,7 +69,7 @@ async function buildReplyIndex(folders, sinceDate, log) {
 
 function findDirectReplyIndexed(message, replyIndex) {
   if (!message.headerMessageId) return null;
-  return replyIndex.get(message.headerMessageId) || null;
+  return replyIndex.get(normalizeMessageId(message.headerMessageId)) || null;
 }
 
 function extractPlainText(part) {
