@@ -116,24 +116,18 @@ async function resolveCurrentMessageId(headerMessageId, sentFolders) {
   return list.messages && list.messages[0] ? list.messages[0].id : null;
 }
 
-function wait(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
 // messageDisplay.open({location: "window"}) throws NS_MSG_ERROR_FOLDER_MISSING
-// for this account even with a correctly-scoped id - a genuine bug in that
-// API's own window-opening path, confirmed by mailTabs.setSelectedMessages()
-// working fine with the exact same id. So: open a real new 3-pane window
-// ourselves, then use the working mailTabs mechanism inside it.
-async function openMessageInNewWindow(messageId) {
-  const win = await browser.windows.create({ type: "normal" });
-  let tab = null;
-  for (let attempt = 0; attempt < 5 && !tab; attempt++) {
-    if (attempt > 0) await wait(200); // new window's mail tab can take a beat to initialize
-    const tabs = await browser.mailTabs.query({ windowId: win.id });
-    tab = tabs[0];
-  }
-  if (!tab) throw new Error("New window did not create a mail tab in time");
-  await browser.mailTabs.setSelectedMessages(tab.id, [messageId]);
+// even with a correctly-scoped id - the error trace points specifically at
+// chrome://messenger/content/messageWindow.js, the standalone-window-only
+// code path. location: "tab" uses a different internal path (opening within
+// an existing window's tab strip), which may not share that bug. Explicitly
+// resolve a real mail window's id first, since this is often called from
+// contexts (background page, a separate extension page) that have no
+// "current window" of their own for the default to fall back on.
+async function openMessageInTab(messageId) {
+  const tabs = await browser.mailTabs.query({});
+  const tab = tabs.find((t) => t.active) || tabs[0];
+  if (!tab) throw new Error("No mail window open to open the message in");
+  await browser.messageDisplay.open({ messageId, location: "tab", windowId: tab.windowId });
 }
 
