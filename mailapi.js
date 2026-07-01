@@ -117,6 +117,9 @@ async function showMessageInMailTab(messageId) {
   try {
     await browser.windows.update(tab.windowId, { focused: true });
   } catch (e) {
-    // focusing is a nice-to-have; the message is already selected either way
+    // Focusing is a nice-to-have - the message is already selected either
+    // way - but log it instead of hiding it, since silently swallowing this
+    // is exactly what made the last "it's not focusing" symptom a mystery.
+    console.error("tb-nudge: failed to focus mail window", e);
   }
 }
