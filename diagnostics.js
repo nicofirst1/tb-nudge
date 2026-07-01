@@ -11,7 +11,13 @@ function buildTable(items) {
     row.className = "clickable";
     row.title = "Open this email";
     row.addEventListener("click", () => {
-      browser.messageDisplay.open({ messageId: d.id, location: "tab" });
+      // location: "window" (not "tab") - this page can itself be a standalone
+      // window, not part of the main 3-pane mail window, so "open a tab here"
+      // has nowhere to render. A new message window always works regardless.
+      browser.messageDisplay.open({ messageId: d.id, location: "window" }).catch((err) => {
+        console.error("tb-nudge: failed to open message", d.id, err);
+        alert(`Could not open this email: ${err.message}`);
+      });
     });
 
     const subjectCell = document.createElement("td");

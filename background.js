@@ -181,7 +181,10 @@ browser.notifications.onClicked.addListener(async (notifId) => {
   const notifiedMap = await getNotifiedMap();
   const messageId = notifiedMap[notifId];
   if (messageId) {
-    await browser.messageDisplay.open({ messageId, location: "tab" });
+    // location: "window", not "tab" - the background page has no window of
+    // its own to open a tab in, so a standalone message window is the only
+    // unambiguous target.
+    await browser.messageDisplay.open({ messageId, location: "window" });
   }
 });
 
