@@ -25,7 +25,36 @@ async function getNotifiedMap() {
   return notifiedMap;
 }
 
-// collectAll / headerRefs come from mailapi.js (loaded before this script).
+// collectAll / headerRefs / getBodyText come from mailapi.js (loaded before this script).
+
+let model = null; // null until model.json exists (i.e. train.js has been run)
+
+async function loadModel() {
+  try {
+    const res = await fetch(browser.runtime.getURL("model.json"));
+    if (!res.ok) return null;
+    const raw = await res.json();
+    const vocabIndex = {};
+    raw.vocab.forEach((t, i) => {
+      vocabIndex[t] = i;
+    });
+    return { ...raw, vocabIndex };
+  } catch (e) {
+    return null; // no model trained yet - fall back to nudging on everything
+  }
+}
+
+// Classifier pre-filter: does this sent message actually look like it needed
+// a reply? Falls back to "yes" (old behavior) if no model has been trained.
+async function needsReply(message) {
+  if (!model) return true;
+  const text = await getBodyText(message.id);
+  const own = stripQuoteTail(text);
+  const tokens = tokenize(`${message.subject || ""} ${own}`);
+  const vec = computeTfidfVector(tokens, model.vocabIndex, model.idf);
+  const proba = predictProba(vec, model.weights, model.bias);
+  return proba >= model.threshold;
+}
 
 async function hasReply(sentMessage, inboxFolders) {
   for (const folder of inboxFolders) {
@@ -89,9 +118,11 @@ async function runCheck() {
       const replied = await hasReply(message, inboxFolders);
       if (replied) {
         handled.add(message.id);
-      } else {
+      } else if (await needsReply(message)) {
         await notifyFollowUp(message, notifiedMap);
         handled.add(message.id);
+      } else {
+        handled.add(message.id); // classifier says this one didn't need a reply
       }
     }
   }
@@ -118,6 +149,7 @@ browser.alarms.onAlarm.addListener((alarm) => {
 });
 
 (async () => {
+  model = await loadModel();
   const settings = await getSettings();
   await browser.alarms.create("nudge-check", { periodInMinutes: settings.checkIntervalMinutes });
   runCheck();

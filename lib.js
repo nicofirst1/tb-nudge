@@ -70,6 +70,43 @@ function looksLikeRequest(text) {
   return own.includes("?") || REQUEST_PHRASES.test(own);
 }
 
+// Lowercase, drop everything but letters (incl. German umlauts/ß since the
+// mailbox is English/German-mixed), drop very short tokens.
+function tokenize(text) {
+  return (text || "")
+    .toLowerCase()
+    .replace(/[^a-zäöüß\s]/gi, " ")
+    .split(/\s+/)
+    .filter((t) => t.length > 2);
+}
+
+// vocabIndex: plain object token -> index (not a Map, so it round-trips
+// through JSON as model.json without conversion). idf: array aligned to it.
+function computeTfidfVector(tokens, vocabIndex, idf) {
+  const vec = new Array(idf.length).fill(0);
+  const counts = {};
+  for (const t of tokens) {
+    const idx = vocabIndex[t];
+    if (idx === undefined) continue;
+    counts[idx] = (counts[idx] || 0) + 1;
+  }
+  for (const idxStr of Object.keys(counts)) {
+    const idx = Number(idxStr);
+    vec[idx] = (1 + Math.log(counts[idxStr])) * idf[idx];
+  }
+  return vec;
+}
+
+function sigmoid(z) {
+  return 1 / (1 + Math.exp(-z));
+}
+
+function predictProba(vec, weights, bias) {
+  let z = bias;
+  for (let i = 0; i < vec.length; i++) z += vec[i] * weights[i];
+  return sigmoid(z);
+}
+
 if (typeof module !== "undefined") {
   module.exports = {
     normalizeSubject,
@@ -78,5 +115,9 @@ if (typeof module !== "undefined") {
     stripQuoteTail,
     isCloseout,
     looksLikeRequest,
+    tokenize,
+    computeTfidfVector,
+    sigmoid,
+    predictProba,
   };
 }

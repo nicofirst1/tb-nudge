@@ -1,2 +1,4 @@
 *.xpi
 .web-extension-id
+model.json
+*.dataset.json

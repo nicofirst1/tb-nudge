@@ -6,7 +6,15 @@ const {
   stripQuoteTail,
   isCloseout,
   looksLikeRequest,
+  tokenize,
+  computeTfidfVector,
+  sigmoid,
+  predictProba,
 } = require("./lib.js");
+
+function approxEqual(a, b, eps = 1e-6) {
+  assert.ok(Math.abs(a - b) < eps, `expected ${a} to be close to ${b}`);
+}
 
 assert.strictEqual(normalizeSubject("Re: Hello"), "hello");
 assert.strictEqual(normalizeSubject("FWD: Hello"), "hello");
@@ -99,5 +107,19 @@ assert.strictEqual(looksLikeRequest("You should have received the paper, is that
 assert.strictEqual(looksLikeRequest("Sounds good, thanks!"), false);
 assert.strictEqual(looksLikeRequest("Great, see you then."), false);
 assert.strictEqual(looksLikeRequest(""), false);
+
+assert.deepStrictEqual(
+  tokenize("Hello, world! Können Sie das prüfen?"),
+  ["hello", "world", "können", "sie", "das", "prüfen"]
+);
+assert.deepStrictEqual(tokenize("ok no way"), ["way"], "drops tokens of length <= 2");
+
+const vec = computeTfidfVector(["foo", "foo", "baz"], { foo: 0, bar: 1 }, [2, 3]);
+approxEqual(vec[0], (1 + Math.log(2)) * 2, 1e-9);
+assert.strictEqual(vec[1], 0, "unmentioned vocab term stays 0");
+assert.strictEqual(vec.length, 2, "vector length matches idf length, unknown tokens ignored");
+
+approxEqual(sigmoid(0), 0.5);
+approxEqual(predictProba([1, 0], [2, 3], -1), sigmoid(1));
 
 console.log("ok - all lib.js tests passed");

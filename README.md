@@ -12,9 +12,10 @@ reply, first by `References`/`In-Reply-To` header match against the sent message
 missing. If nothing matches, it fires one desktop notification and stops re-checking that
 message. Clicking the notification opens the original sent message.
 
-It does **not** classify whether a reply was actually expected (that's the part Gmail's ML
-does) — it will nudge about anything unanswered, including FYIs and "thanks!" closers. If
-that turns out to be too noisy in practice, that's the next thing to add.
+Before a match is scored, `needsReply()` runs it through a locally-trained classifier (see
+below) that decides whether it actually looks like it needed a reply at all — if no model
+has been trained yet, this step is a no-op and everything unanswered gets nudged, same as
+before.
 
 ## Load it (temporary, for testing)
 
@@ -49,6 +50,27 @@ Scans the last 730 days. Click **Run extraction**, then **Download dataset.json*
 
 **Before training on it: spot-check ~20-30 rows by hand.** This is inferred, not verified,
 labeling — check it's not systematically wrong before trusting the whole set.
+
+## Training the classifier
+
+```
+node train.js ~/Downloads/tb-nudge-dataset.json
+```
+
+Hand-rolled TF-IDF + logistic regression (no dependencies — the dataset is far too small to
+justify one), class-weighted for the positive/negative imbalance. Writes `model.json` next
+to this script and prints 5-fold cross-validation metrics first. `model.json` is
+**gitignored on purpose** — it encodes real vocabulary from your emails (names, project
+terms), which is more sensitive than the code that produces it. It's a local build artifact:
+regenerate it any time by re-running this script, no need to version it.
+
+Read the "recall on negatives" number specifically — that's how often it correctly
+recognizes a message that *didn't* need a reply, and with only a couple dozen negative
+examples it'll be the weak number for a while. It only gets better with a bigger negative
+pool: re-run `dataset.html` periodically as more thread closeouts accumulate, then retrain.
+
+After retraining, **reload the temporary add-on** — `background.js` loads `model.json` once
+at startup, so it won't pick up a new model until reloaded.
 
 ## Tests
 
