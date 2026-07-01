@@ -1,8 +1,9 @@
 {
   "manifest_version": 2,
   "name": "tb-nudge",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Nudges you about sent emails that never got a reply, across all accounts. Flags and tags the message, and pre-filters nudges through a locally-trained (no data leaves your machine) TF-IDF + logistic regression classifier that judges whether a reply was actually expected - with a per-message explanation and a preferences page showing the classifier's global word weights.",
+  "author": "Nicolo Brandizzi",
   "browser_specific_settings": {
     "gecko": {
       "id": "tb-nudge@nbrandizzi.local",
