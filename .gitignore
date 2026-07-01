@@ -1,4 +1,5 @@
 *.xpi
+dist/
 .web-extension-id
 model.json
 *.dataset.json

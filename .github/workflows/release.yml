@@ -1,0 +1,34 @@
+name: release
+
+# Push a tag like v0.5.8 (matching manifest.json's version) to build the .xpi
+# and publish it as a GitHub Release:
+#   git tag v0.5.8 && git push origin v0.5.8
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write # needed to create the release
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Check tag matches manifest version
+        run: |
+          V=$(node -p "require('./manifest.json').version")
+          [ "$GITHUB_REF" = "refs/tags/v$V" ] || { echo "Tag $GITHUB_REF does not match manifest v$V"; exit 1; }
+
+      - name: Build .xpi
+        run: bash package.sh
+
+      - name: Publish release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.xpi
+          generate_release_notes: true

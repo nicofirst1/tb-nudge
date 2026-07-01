@@ -2,6 +2,12 @@
 
 All notable changes to tb-nudge are documented here. Versions match `manifest.json`.
 
+## [0.5.8]
+- Add `package.sh` to build a versioned, distributable `.xpi` (tests first, `manifest.json` at root, dev files and personal `model.json` excluded).
+- Add a GitHub Actions release workflow: pushing a `vX.Y.Z` tag matching the manifest version builds the `.xpi` and publishes it as a GitHub Release.
+- Change the extension id from `...@nbrandizzi.local` to `tb-nudge@nicolobrandizzi.com` so it's marketplace-valid.
+- README: correct install/signing notes for Thunderbird (ATN, not AMO) and document packaging + release.
+
 ## [0.5.7]
 - Add Download/Upload corrections to the training page's Human corrections section. Upload validates each row and merges with dedup (re-importing the same file is a no-op), so corrections are portable across machines/profiles.
 - Persist the extracted dataset, so returning to the training page shows the Train step directly without re-extracting.
