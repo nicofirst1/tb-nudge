@@ -1,7 +1,12 @@
 # tb-nudge
 
-Thunderbird MailExtension that nudges you about sent emails that never got a reply — a
-heuristic-only version of Gmail's "Nudge" (no ML, just header/subject matching).
+Thunderbird MailExtension that nudges you about sent emails that never got a reply — like
+Gmail's "Nudge," but running locally: no data leaves your machine, and the classifier that
+judges whether a reply was actually expected is trained on your own mailbox.
+
+Requires Thunderbird 128+. Personal project, not (yet) published on
+[addons.thunderbird.net](https://addons.thunderbird.net/) — see "Load it" below for local
+install.
 
 ## How it decides "no reply yet"
 
@@ -25,8 +30,7 @@ folder by the Flag column to bring them to the top, or — better, for a persist
 cross-account view — create a **Saved Search folder** once (Thunderbird native feature,
 nothing to build): `Ctrl+Shift+F` → set folder to search to "All Folders"/your accounts →
 filter by **Tags: Needs Reply** → **Save As Search Folder**. That folder then live-updates
-with every message tb-nudge tags, across all four Gmail accounts, permanently in your
-folder pane.
+with every message tb-nudge tags, across all your accounts, permanently in your folder pane.
 
 The tag is applied once, when first nudged — it isn't automatically cleared if a reply
 comes in later (known simplification; remove the tag/flag by hand if it bothers you, or
@@ -97,14 +101,17 @@ For the model's *global* view — every word it's ever seen, ranked by learned w
 open Add-ons Manager → tb-nudge → Preferences → **Inspect classifier word weights**. Two
 columns: words that push toward "needs a reply" and words that push toward "no reply
 needed", with their raw weight. Useful for sanity-checking the model isn't keying off
-something spurious (it currently is, a little — see the "what's inside model.json"
-discussion in the chat history; that's expected with this little negative-class data).
+something spurious — with this little training data (a few dozen examples), it sometimes
+picks up coincidental correlations (e.g. a name that happened to appear disproportionately
+in one class) rather than a real linguistic pattern. Worth an eyeball before trusting it.
 
 ## Testing without waiting for the hourly alarm
 
-Preferences → **Run check now** — runs `runCheck()` immediately instead of waiting for the
-alarm, and reports how many messages were scanned and how many got nudged. Handy for testing
-after changing the model or the matching logic.
+Preferences → **Run check / diagnostics →** opens a page with **Run check now** (runs the
+same check the hourly alarm does, immediately) and **Reset "already checked" state** (forces
+a re-scan of everything in the current window). Each run shows a per-message trace: subject,
+outcome (nudged / already replied / suppressed), and the words behind that decision. Handy
+after changing the model or the matching logic, without waiting for the alarm.
 
 ## Tests
 
@@ -115,3 +122,7 @@ node test.js
 Covers the pure matching/labeling logic in `lib.js` (the only non-trivial branching logic;
 the rest is direct Thunderbird API calls that can only really be tested by loading it in
 Thunderbird).
+
+## License
+
+[MIT](LICENSE)
