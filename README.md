@@ -64,24 +64,34 @@ not typed in by hand:
   silence is never treated as "didn't need a reply", since that's indistinguishable from
   the exact case tb-nudge exists to catch.
 
-Scans the last 730 days. Click **Run extraction**, then **Download dataset.json**.
+Lookback window is adjustable (default 730 days; `-1` mines the entire mailbox, which can be
+slow). If a dataset was already generated before, running extraction again asks for
+confirmation first rather than silently redoing the scan. Click **Run extraction**, then
+**Download dataset.json** — this prompts a native Save dialog (not a fixed Downloads-folder
+drop), so you can save it wherever you like, e.g. straight into this repo folder.
 
 **Before training on it: spot-check ~20-30 rows by hand.** This is inferred, not verified,
 labeling: check it's not systematically wrong before trusting the whole set.
 
 ## Training the classifier
 
-```
-node train.js ~/Downloads/tb-nudge-dataset.json
-```
+Two ways to train, same underlying code (`trainModel()` in `lib.js`) either way:
+
+- **In the browser**: after extraction finishes on the dataset page, a **Train classifier**
+  section appears — trains on the rows just extracted (nothing leaves the page), prints
+  5-fold cross-validation metrics, then **Download model.json** (again a real Save dialog).
+- **From the command line**:
+  ```
+  node train.js ~/Downloads/tb-nudge-dataset.json
+  ```
+  Useful if you want to train on an older exported dataset, or script it.
 
 Hand-rolled TF-IDF (term frequency, inverse document frequency) + logistic regression, no
 dependencies since the dataset is far too small to justify one, class-weighted for the
-positive/negative imbalance. Writes `model.json` next to this script and prints 5-fold
-cross-validation metrics first. `model.json` is **gitignored on purpose**: it encodes real
+positive/negative imbalance. `model.json` is **gitignored on purpose**: it encodes real
 vocabulary from your emails (names, project terms), which is more sensitive than the code
-that produces it. It's a local build artifact: regenerate it any time by re-running this
-script, no need to version it.
+that produces it. It's a local build artifact: regenerate it any time, no need to version it.
+Save it into this folder (overwriting the existing `model.json`) for `background.js` to use it.
 
 Read the "recall on negatives" number specifically: that's how often it correctly recognizes
 a message that *didn't* need a reply, and with only a couple dozen negative examples it'll be

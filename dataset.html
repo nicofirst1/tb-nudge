@@ -5,23 +5,42 @@
   <title>tb-nudge: build training dataset</title>
   <style>
     body { font: 13px sans-serif; padding: 16px; max-width: 640px; }
-    #log { background: #111; color: #0f0; padding: 8px; height: 260px; overflow-y: auto;
+    #log, #trainLog { background: #111; color: #0f0; padding: 8px; height: 200px; overflow-y: auto;
            white-space: pre-wrap; font: 12px monospace; margin-top: 10px; }
-    #download { display: none; margin-top: 10px; }
+    #existingNotice { color: #a05a00; margin-top: 8px; font-size: 12px; }
+    #downloadDataset, #downloadModel { display: none; margin-left: 8px; cursor: pointer;
+           color: #1a5aa0; text-decoration: underline; }
+    #trainSection { display: none; margin-top: 20px; padding-top: 14px; border-top: 1px solid #ccc; }
   </style>
 </head>
 <body>
   <h2>tb-nudge: build training dataset</h2>
   <p>
-    Scans your Sent folders (last 730 days). Weak-supervision labels only, not manual —
+    Scans your Sent folders. Weak-supervision labels only, not manual —
     see README before trusting this fully: spot-check a sample before training on it.
   </p>
   <p><b>Positive</b> (needed a reply): first message in a thread that got a direct reply.<br />
      <b>Negative</b> (didn't need a reply): a reply-to-a-reply that got a short/closing
      acknowledgment back. Anything else is skipped as ambiguous.</p>
+  <label>
+    Lookback days (<code>-1</code> for entire mailbox)
+    <input type="number" id="lookbackDays" value="730" style="width: 80px;" />
+  </label>
+  <div id="existingNotice"></div>
+  <br />
   <button id="run">Run extraction</button>
+  <a id="downloadDataset">Download dataset.json</a>
   <div id="log"></div>
-  <a id="download"></a>
+
+  <div id="trainSection">
+    <h3>Train classifier</h3>
+    <p>Trains on the dataset just extracted above (in this page, nothing sent anywhere).
+       Prints 5-fold cross-validation metrics, then offers <code>model.json</code> to save.</p>
+    <button id="train">Train classifier</button>
+    <a id="downloadModel">Download model.json</a>
+    <div id="trainLog"></div>
+  </div>
+
   <script src="lib.js"></script>
   <script src="mailapi.js"></script>
   <script src="dataset.js"></script>

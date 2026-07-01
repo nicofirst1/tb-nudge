@@ -12,6 +12,11 @@ const {
   predictProba,
   topContributions,
   bottomContributions,
+  buildVocab,
+  classWeights,
+  trainLogReg,
+  evaluateModel,
+  trainModel,
 } = require("./lib.js");
 
 function approxEqual(a, b, eps = 1e-6) {
@@ -146,5 +151,35 @@ assert.deepStrictEqual(
   "ranks present words most-negative-first, ignores absent (0) ones"
 );
 assert.deepStrictEqual(bottomContributions([0, 0, 0], vocab3, weights3, 3), [], "no present words -> empty");
+
+// --- training sanity check: does the pipeline actually learn anything? ---
+// A tiny, trivially-separable synthetic set: "needs reply" mentions "urgent",
+// "no reply needed" mentions "thanks". If trainModel can't separate this, the
+// pipeline itself is broken, independent of any real dataset's noise.
+const toyRows = [
+  { label: 1, tokens: tokenize("urgent please respond soon") },
+  { label: 1, tokens: tokenize("urgent question need answer") },
+  { label: 1, tokens: tokenize("urgent deadline tomorrow help") },
+  { label: 0, tokens: tokenize("thanks appreciate your help") },
+  { label: 0, tokens: tokenize("thanks sounds good great") },
+  { label: 0, tokens: tokenize("thanks all set now") },
+];
+assert.deepStrictEqual(
+  classWeights([1, 1, 0]).map((w) => Math.round(w * 100) / 100),
+  [0.75, 0.75, 1.5],
+  "balanced class weights: rarer class gets a bigger weight"
+);
+
+const vocabResult = buildVocab(toyRows, 1);
+assert.ok(vocabResult.vocab.includes("urgent"), "vocab should include a word repeated across positive rows");
+const X = toyRows.map((r) => computeTfidfVector(r.tokens, vocabResult.vocabIndex, vocabResult.idf));
+const y = toyRows.map((r) => r.label);
+const { w, b } = trainLogReg(X, y, classWeights(y), vocabResult.idf.length, { iters: 500 });
+const trainMetrics = evaluateModel(X, y, w, b, 0.5);
+assert.strictEqual(trainMetrics.f1, 1, "should perfectly fit a trivially-separable toy set");
+
+const { model } = trainModel(toyRows, { minDf: 1, kFolds: 2 });
+assert.ok(model.vocab.length > 0, "trainModel should produce a non-empty vocab");
+assert.strictEqual(typeof model.bias, "number");
 
 console.log("ok - all lib.js tests passed");
