@@ -116,22 +116,3 @@ async function resolveCurrentMessageId(headerMessageId, sentFolders) {
   return list.messages && list.messages[0] ? list.messages[0].id : null;
 }
 
-// messageDisplay.open() (a standalone message window) throws
-// NS_MSG_ERROR_FOLDER_MISSING for some Gmail messages even though the exact
-// same message opens fine via normal double-click navigation in the 3-pane
-// window. Selecting it in an existing mail tab reuses that same working
-// code path instead of the standalone-window one.
-async function showMessageInMailTab(messageId) {
-  const tabs = await browser.mailTabs.query({});
-  const tab = tabs.find((t) => t.active) || tabs[0];
-  if (!tab) throw new Error("No mail tab open to display the message in");
-  await browser.mailTabs.setSelectedMessages(tab.id, [messageId]);
-  try {
-    await browser.windows.update(tab.windowId, { focused: true });
-  } catch (e) {
-    // Focusing is a nice-to-have - the message is already selected either
-    // way - but log it instead of hiding it, since silently swallowing this
-    // is exactly what made the last "it's not focusing" symptom a mystery.
-    console.error("tb-nudge: failed to focus mail window", e);
-  }
-}
