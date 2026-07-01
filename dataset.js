@@ -5,6 +5,9 @@ async function buildDataset(log) {
   const sentFolders = await browser.folders.query({ specialUse: ["sent"] });
   const inboxFolders = await browser.folders.query({ specialUse: ["inbox"] });
 
+  log("Indexing inbox (one pass, this is the slow part)...");
+  const replyIndex = await buildReplyIndex(inboxFolders, cutoff, log);
+
   const rows = [];
   let scanned = 0;
   let skippedAmbiguous = 0;
@@ -16,13 +19,13 @@ async function buildDataset(log) {
     for (const message of messages) {
       scanned++;
       if (scanned % 25 === 0) {
-        log(`scanned ${scanned}, collected ${rows.length} rows...`);
+        log(`scanned ${scanned} sent messages, collected ${rows.length} rows...`);
       }
 
       const ownRefs = await headerRefs(message.id);
       const isFirstInThread = !ownRefs.trim();
 
-      const reply = await findDirectReply(message, inboxFolders);
+      const reply = findDirectReplyIndexed(message, replyIndex);
       if (!reply) {
         skippedAmbiguous++;
         continue; // no observed reply -> ambiguous, not "didn't need one" -> skip

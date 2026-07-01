@@ -20,20 +20,48 @@ async function headerRefs(messageId) {
   return [...(h["references"] || []), ...(h["in-reply-to"] || [])].join(" ");
 }
 
-// Strict single-hop match: the first message in `folders` whose References/
-// In-Reply-To names `message`'s Message-ID. No subject/sender fallback —
-// for training-data extraction, a missed example is fine, a wrong label isn't.
-async function findDirectReply(message, folders) {
-  if (!message.headerMessageId) return null;
-  for (const folder of folders) {
-    const list = await browser.messages.query({ folderId: folder.id, fromDate: message.date });
-    const candidates = await collectAll(list);
-    for (const candidate of candidates) {
-      const refs = await headerRefs(candidate.id);
-      if (refs.includes(message.headerMessageId)) return candidate;
+// Runs up to `limit` calls to fn(item) concurrently instead of one at a time.
+// getFull() is an IPC round-trip to Thunderbird's message store; sequential
+// calls over thousands of messages is the slow part, not the CPU work.
+async function mapConcurrent(items, limit, fn) {
+  const results = new Array(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const i = next++;
+      results[i] = await fn(items[i], i);
     }
   }
-  return null;
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
+// One pass over `folders`: maps every Message-ID mentioned in any candidate's
+// References/In-Reply-To to that candidate. Replaces the naive approach of
+// re-scanning + re-fetching all inbox messages for every single sent message
+// (O(sent x inbox) getFull calls) with a single O(inbox) pass.
+async function buildReplyIndex(folders, sinceDate, log) {
+  const index = new Map();
+  let done = 0;
+  for (const folder of folders) {
+    const list = await browser.messages.query({ folderId: folder.id, fromDate: sinceDate });
+    const candidates = await collectAll(list);
+    await mapConcurrent(candidates, 8, async (candidate) => {
+      const refs = await headerRefs(candidate.id);
+      for (const token of refs.split(/\s+/).filter(Boolean)) {
+        if (!index.has(token)) index.set(token, candidate);
+      }
+      done++;
+      if (log && done % 200 === 0) log(`indexed ${done} inbox messages...`);
+    });
+  }
+  if (log) log(`indexing done: ${done} inbox messages, ${index.size} reply references.`);
+  return index;
+}
+
+function findDirectReplyIndexed(message, replyIndex) {
+  if (!message.headerMessageId) return null;
+  return replyIndex.get(message.headerMessageId) || null;
 }
 
 function extractPlainText(part) {
