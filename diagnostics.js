@@ -22,7 +22,7 @@ function buildTable(items) {
           alert("Could not find this email anymore - it may have moved or been deleted.");
           return;
         }
-        await browser.messageDisplay.open({ messageId, location: "window" });
+        await openMessageInNewWindow(messageId);
       } catch (err) {
         console.error("tb-nudge: failed to open message", d, err);
         alert(`Could not open this email: ${err.message}`);

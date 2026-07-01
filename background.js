@@ -208,7 +208,7 @@ browser.notifications.onClicked.addListener(async (notifId) => {
   const sentFolders = await browser.folders.query({ specialUse: ["sent"] });
   const messageId = await resolveCurrentMessageId(headerMessageId, sentFolders);
   if (!messageId) return; // message moved/deleted since it was nudged
-  await browser.messageDisplay.open({ messageId, location: "window" });
+  await openMessageInNewWindow(messageId);
 });
 
 browser.alarms.onAlarm.addListener((alarm) => {
