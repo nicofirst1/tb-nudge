@@ -17,7 +17,7 @@
     "alarms"
   ],
   "background": {
-    "scripts": ["lib.js", "background.js"],
+    "scripts": ["lib.js", "mailapi.js", "background.js"],
     "persistent": true
   },
   "options_ui": {

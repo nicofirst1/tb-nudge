@@ -32,11 +32,30 @@ install (AMO unlisted submission, or `xpinstall.signatures.required=false` in
 Add-ons Manager → tb-nudge → **Preferences**: adjust the hour threshold and lookback
 window.
 
+## Building an ML training dataset (no manual labeling)
+
+Add-ons Manager → tb-nudge → **Preferences** → **Build ML training dataset**. This is a
+weak-supervision extraction, not manual labels — labels are inferred from thread structure,
+not typed in by hand:
+
+- **Positive** (needed a reply): the first message in a thread, and it got a direct reply.
+- **Negative** (didn't need a reply): a reply-to-a-reply that itself got back a short or
+  clearly-closing acknowledgment (e.g. "thanks!", "sounds good").
+- Everything else (no reply ever observed, or a reply that wasn't a closeout) is **skipped**
+  — silence is never treated as "didn't need a reply," since that's indistinguishable from
+  the exact case tb-nudge exists to catch.
+
+Scans the last 730 days. Click **Run extraction**, then **Download dataset.json**.
+
+**Before training on it: spot-check ~20-30 rows by hand.** This is inferred, not verified,
+labeling — check it's not systematically wrong before trusting the whole set.
+
 ## Tests
 
 ```
 node test.js
 ```
 
-Covers the pure matching logic in `lib.js` (the only non-trivial branching logic; the rest
-is direct Thunderbird API calls that can only really be tested by loading it in Thunderbird).
+Covers the pure matching/labeling logic in `lib.js` (the only non-trivial branching logic;
+the rest is direct Thunderbird API calls that can only really be tested by loading it in
+Thunderbird).

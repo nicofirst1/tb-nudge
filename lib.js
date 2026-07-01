@@ -28,6 +28,35 @@ function isLikelyReply(sentHeaderMessageId, sentSubject, sentRecipients, candida
   return subjectMatches && fromRecipient && candidateEmail !== "";
 }
 
+// Cuts off quoted history (">" lines, "On ... wrote:", German "Am ... schrieb ...:",
+// "-----Original Message-----") so only the sender's own new text remains.
+function stripQuoteTail(text) {
+  const lines = (text || "").split(/\r?\n/);
+  const kept = [];
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (/^>/.test(trimmed)) break;
+    if (/^On .+wrote:$/.test(trimmed)) break;
+    if (/^Am .+schrieb.*:$/.test(trimmed)) break;
+    if (/^-{2,}\s*Original Message\s*-{2,}$/i.test(trimmed)) break;
+    kept.push(line);
+  }
+  return kept.join("\n").trim();
+}
+
+const CLOSEOUT_PHRASES =
+  /^(thanks|thank you|thx|danke|great|awesome|perfect|sounds good|got it|sure|no problem|no worries|ok|okay|cool|will do|noted|understood|alles klar|passt)\b/i;
+
+// Weak-supervision negative-label proxy: a short reply, or one opening with a
+// closing phrase, after quoted history is stripped. Used to decide whether a
+// reply-to-a-reply wrapped up the thread without needing more from us.
+function isCloseout(text) {
+  const own = stripQuoteTail(text);
+  if (!own) return false;
+  const wordCount = own.split(/\s+/).filter(Boolean).length;
+  return wordCount <= 12 || CLOSEOUT_PHRASES.test(own);
+}
+
 if (typeof module !== "undefined") {
-  module.exports = { normalizeSubject, extractEmail, isLikelyReply };
+  module.exports = { normalizeSubject, extractEmail, isLikelyReply, stripQuoteTail, isCloseout };
 }

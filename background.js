@@ -25,21 +25,7 @@ async function getNotifiedMap() {
   return notifiedMap;
 }
 
-async function collectAll(list) {
-  const messages = [...list.messages];
-  let page = list;
-  while (page.id) {
-    page = await browser.messages.continueList(page.id);
-    messages.push(...page.messages);
-  }
-  return messages;
-}
-
-async function headerRefs(messageId) {
-  const full = await browser.messages.getFull(messageId);
-  const h = full.headers || {};
-  return [...(h["references"] || []), ...(h["in-reply-to"] || [])].join(" ");
-}
+// collectAll / headerRefs come from mailapi.js (loaded before this script).
 
 async function hasReply(sentMessage, inboxFolders) {
   for (const folder of inboxFolders) {
