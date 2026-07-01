@@ -107,17 +107,32 @@ function predictProba(vec, weights, bias) {
   return sigmoid(z);
 }
 
-// Words actually present in this message, ranked by how much they pushed the
-// prediction (their tfidf value times their learned weight), highest first.
-// This is the explanation: "flagged mostly because of these words."
-function topContributions(vec, vocab, weights, n) {
+function presentContributions(vec, vocab, weights) {
   const contributions = [];
   for (let i = 0; i < vec.length; i++) {
     if (vec[i] === 0) continue;
     contributions.push({ word: vocab[i], contribution: vec[i] * weights[i] });
   }
-  contributions.sort((a, b) => b.contribution - a.contribution);
-  return contributions.slice(0, n).map((c) => c.word);
+  return contributions;
+}
+
+// Words actually present in this message, ranked by how much they pushed the
+// prediction (their tfidf value times their learned weight), highest first.
+// This is the explanation for a NUDGE: "flagged mostly because of these words."
+function topContributions(vec, vocab, weights, n) {
+  return presentContributions(vec, vocab, weights)
+    .sort((a, b) => b.contribution - a.contribution)
+    .slice(0, n)
+    .map((c) => c.word);
+}
+
+// Same, but lowest (most negative) contribution first - the explanation for a
+// SUPPRESSED nudge: "not flagged mostly because of these words."
+function bottomContributions(vec, vocab, weights, n) {
+  return presentContributions(vec, vocab, weights)
+    .sort((a, b) => a.contribution - b.contribution)
+    .slice(0, n)
+    .map((c) => c.word);
 }
 
 if (typeof module !== "undefined") {
@@ -133,5 +148,6 @@ if (typeof module !== "undefined") {
     sigmoid,
     predictProba,
     topContributions,
+    bottomContributions,
   };
 }

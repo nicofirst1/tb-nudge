@@ -46,18 +46,18 @@ async function loadModel() {
 
 // Classifier pre-filter: does this sent message actually look like it needed
 // a reply? Falls back to "yes, no explanation" (old behavior) if no model has
-// been trained. topWords is the explainability piece: the words in THIS
-// message that most pushed the decision, for display in the notification and
-// (later) anywhere else we want to show "why was this flagged."
+// been trained. topWords explains a NUDGE ("flagged because of these words"),
+// bottomWords explains a SUPPRESSION ("not flagged because of these words").
 async function classify(message) {
-  if (!model) return { needsReply: true, topWords: [] };
+  if (!model) return { needsReply: true, topWords: [], bottomWords: [] };
   const text = await getBodyText(message.id);
   const own = stripQuoteTail(text);
   const tokens = tokenize(`${message.subject || ""} ${own}`);
   const vec = computeTfidfVector(tokens, model.vocabIndex, model.idf);
   const proba = predictProba(vec, model.weights, model.bias);
   const topWords = topContributions(vec, model.vocab, model.weights, 3);
-  return { needsReply: proba >= model.threshold, topWords };
+  const bottomWords = bottomContributions(vec, model.vocab, model.weights, 3);
+  return { needsReply: proba >= model.threshold, topWords, bottomWords };
 }
 
 async function hasReply(sentMessage, inboxFolders) {
@@ -127,6 +127,7 @@ async function runCheck() {
   let notified = 0;
   let alreadyReplied = 0;
   let suppressedByClassifier = 0;
+  const decisions = []; // per-message trace, for the "Run check now" test view
 
   for (const folder of sentFolders) {
     const list = await browser.messages.query({
@@ -144,13 +145,16 @@ async function runCheck() {
       if (replied) {
         handled.add(message.id);
         alreadyReplied++;
+        decisions.push({ subject: message.subject, outcome: "already replied", words: [] });
       } else {
         const result = await classify(message);
         if (result.needsReply) {
           await notifyFollowUp(message, notifiedMap, result.topWords);
           notified++;
+          decisions.push({ subject: message.subject, outcome: "nudged", words: result.topWords });
         } else {
           suppressedByClassifier++;
+          decisions.push({ subject: message.subject, outcome: "suppressed", words: result.bottomWords });
         }
         handled.add(message.id); // either notified, or classifier says it didn't need a reply
       }
@@ -164,7 +168,7 @@ async function runCheck() {
 
   await saveHandledIds(handled);
   await browser.storage.local.set({ notifiedMap });
-  return { scanned, notified, alreadyReplied, suppressedByClassifier };
+  return { scanned, notified, alreadyReplied, suppressedByClassifier, decisions };
 }
 
 browser.notifications.onClicked.addListener(async (notifId) => {

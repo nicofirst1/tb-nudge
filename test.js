@@ -11,6 +11,7 @@ const {
   sigmoid,
   predictProba,
   topContributions,
+  bottomContributions,
 } = require("./lib.js");
 
 function approxEqual(a, b, eps = 1e-6) {
@@ -137,5 +138,13 @@ assert.deepStrictEqual(
   "a present word with negative contribution still shows up if it's the only one"
 );
 assert.deepStrictEqual(topContributions([0, 0, 0], vocab3, weights3, 3), [], "no present words -> empty");
+
+// vec: "please" present (positive), "thanks" present (negative) - bottom should surface "thanks" first
+assert.deepStrictEqual(
+  bottomContributions([1.5, 0, 2], vocab3, weights3, 2),
+  ["thanks", "please"],
+  "ranks present words most-negative-first, ignores absent (0) ones"
+);
+assert.deepStrictEqual(bottomContributions([0, 0, 0], vocab3, weights3, 3), [], "no present words -> empty");
 
 console.log("ok - all lib.js tests passed");
