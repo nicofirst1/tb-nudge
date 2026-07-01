@@ -6,6 +6,7 @@ const {
   stripQuoteTail,
   isCloseout,
   looksLikeRequest,
+  labelSentMessage,
   tokenize,
   computeTfidfVector,
   sigmoid,
@@ -115,6 +116,62 @@ assert.strictEqual(looksLikeRequest("Sounds good, thanks!"), false);
 assert.strictEqual(looksLikeRequest("Great, see you then."), false);
 assert.strictEqual(looksLikeRequest(""), false);
 
+// --- labelSentMessage: the weak-supervision decision cascade (see HANDOFF) ---
+const d0 = new Date("2026-01-01");
+const d1 = new Date("2026-01-02");
+// self-bump before any reply -> positive, regardless of content
+assert.deepStrictEqual(
+  labelSentMessage({ ownText: "fyi the deck is attached", inboxReply: null, selfBump: { date: d0 } }),
+  { label: 1, source: "self-bump" },
+  "self-bump with no reply is a positive"
+);
+// self-bump AFTER the reply arrived -> not first-party evidence; falls through
+assert.deepStrictEqual(
+  labelSentMessage({
+    ownText: "Here is the full summary of everything we went through in the meeting earlier today for the record.",
+    inboxReply: { date: d0, body: "thanks!" },
+    selfBump: { date: d1 },
+  }),
+  { label: 0, source: "reply-closeout" },
+  "a bump that lands after the reply does not override the closeout-negative"
+);
+// the contamination fix: first-in-thread FYI + bare thanks -> NEGATIVE (was forced positive)
+assert.deepStrictEqual(
+  labelSentMessage({ ownText: "Sharing the notes from today's session so everyone has the action items and decisions in one place.", inboxReply: { date: d0, body: "Thanks!" }, selfBump: null }),
+  { label: 0, source: "reply-closeout" },
+  "a longer FYI answered only by a courtesy ack is negative, not positive"
+);
+// the sent message is itself a bare ack -> negative from content alone, even with no reply
+assert.deepStrictEqual(
+  labelSentMessage({ ownText: "Perfect, thanks - sounds good!", inboxReply: null, selfBump: null }),
+  { label: 0, source: "own-closeout" },
+  "a sent closeout needs no reply to be labeled a negative"
+);
+// but a sent closeout that tacks on a question is not a negative
+assert.deepStrictEqual(
+  labelSentMessage({ ownText: "Thanks! Can you also confirm the room?", inboxReply: { date: d0, body: "yes, room 3" }, selfBump: null }),
+  { label: 1, source: "request" },
+  "a closeout that also asks something is a request, not an own-closeout negative"
+);
+// a real ask that got any reply -> positive by the sent content
+assert.deepStrictEqual(
+  labelSentMessage({ ownText: "Can you send the invoice?", inboxReply: { date: d0, body: "sure" }, selfBump: null }),
+  { label: 1, source: "request" },
+  "a request that got a reply is positive"
+);
+// short-but-substantive reply that itself re-asks -> not a closeout, skip
+assert.deepStrictEqual(
+  labelSentMessage({ ownText: "Sharing the notes from the review so you have the full context before we proceed next week.", inboxReply: { date: d0, body: "No, use v2 - did you check?" }, selfBump: null }),
+  { label: null, source: "ambiguous" },
+  "a substantive reply that asks its own question is not a closeout"
+);
+// no reply, no bump -> silence, never labeled
+assert.deepStrictEqual(
+  labelSentMessage({ ownText: "The report covers the quarterly figures and the revised roadmap that the board asked us to prepare last month.", inboxReply: null, selfBump: null }),
+  { label: null, source: "silence" },
+  "a substantive statement that got no reply and no bump is never labeled"
+);
+
 assert.deepStrictEqual(
   tokenize("Hello, world! Können Sie das prüfen?"),
   ["hello", "world", "können", "sie", "das", "prüfen"]
@@ -178,8 +235,10 @@ const { w, b } = trainLogReg(X, y, classWeights(y), vocabResult.idf.length, { it
 const trainMetrics = evaluateModel(X, y, w, b, 0.5);
 assert.strictEqual(trainMetrics.f1, 1, "should perfectly fit a trivially-separable toy set");
 
-const { model } = trainModel(toyRows, { minDf: 1, kFolds: 2 });
-assert.ok(model.vocab.length > 0, "trainModel should produce a non-empty vocab");
-assert.strictEqual(typeof model.bias, "number");
+(async () => {
+  const { model } = await trainModel(toyRows, { minDf: 1, kFolds: 2 });
+  assert.ok(model.vocab.length > 0, "trainModel should produce a non-empty vocab");
+  assert.strictEqual(typeof model.bias, "number");
 
-console.log("ok - all lib.js tests passed");
+  console.log("ok - all lib.js tests passed");
+})();

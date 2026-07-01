@@ -43,33 +43,47 @@ function normalizeMessageId(id) {
   return (id || "").trim().replace(/^</, "").replace(/>$/, "");
 }
 
-// One pass over `folders`: maps every Message-ID mentioned in any candidate's
-// References/In-Reply-To to that candidate. Replaces the naive approach of
-// re-scanning + re-fetching all inbox messages for every single sent message
-// (O(sent x inbox) getFull calls) with a single O(inbox) pass.
-async function buildReplyIndex(folders, sinceDate, log) {
+// Every normalized Message-ID mentioned anywhere in a candidate's
+// References/In-Reply-To. Default keying for buildReplyIndex: a reply is filed
+// under every ancestor it quotes.
+async function allRefKeys(candidate) {
+  const refs = await headerRefs(candidate.id);
+  return refs.split(/\s+/).filter(Boolean).map(normalizeMessageId);
+}
+
+// The single immediate parent: In-Reply-To, or (absent) the last References
+// entry. Used to build the self-bump index, where "anywhere in References"
+// would wrongly link an unrelated later mail that merely quotes an old thread.
+async function immediateParentKeys(candidate) {
+  const full = await browser.messages.getFull(candidate.id);
+  const h = full.headers || {};
+  const inReplyTo = (h["in-reply-to"] || []).join(" ").split(/\s+/).filter(Boolean);
+  const references = (h["references"] || []).join(" ").split(/\s+/).filter(Boolean);
+  const parent = inReplyTo.length ? inReplyTo[inReplyTo.length - 1] : references[references.length - 1];
+  return parent ? [normalizeMessageId(parent)] : [];
+}
+
+// One pass over `folders`: maps a Message-ID to the EARLIEST candidate (by date)
+// keyed to it by `keyFn` (default: every ref it quotes). Earliest matters for
+// the self-bump temporal gate - we compare the first reply's date to the bump's.
+// Replaces the naive O(sent x inbox) re-scan with a single O(folder) pass.
+async function buildReplyIndex(folders, sinceDate, log, keyFn = allRefKeys) {
   const index = new Map();
   let done = 0;
   for (const folder of folders) {
     const list = await browser.messages.query({ folderId: folder.id, fromDate: sinceDate });
     const candidates = await collectAll(list);
     await mapConcurrent(candidates, 8, async (candidate) => {
-      const refs = await headerRefs(candidate.id);
-      for (const rawToken of refs.split(/\s+/).filter(Boolean)) {
-        const token = normalizeMessageId(rawToken);
-        if (!index.has(token)) index.set(token, candidate);
+      for (const token of await keyFn(candidate)) {
+        const existing = index.get(token);
+        if (!existing || candidate.date < existing.date) index.set(token, candidate);
       }
       done++;
-      if (log && done % 200 === 0) log(`indexed ${done} inbox messages...`);
+      if (log && done % 200 === 0) log(`indexed ${done} messages...`);
     });
   }
-  if (log) log(`indexing done: ${done} inbox messages, ${index.size} reply references.`);
+  if (log) log(`indexing done: ${done} messages, ${index.size} references.`);
   return index;
-}
-
-function findDirectReplyIndexed(message, replyIndex) {
-  if (!message.headerMessageId) return null;
-  return replyIndex.get(normalizeMessageId(message.headerMessageId)) || null;
 }
 
 function extractPlainText(part) {
@@ -129,6 +143,30 @@ async function openMessageInTab(messageId) {
   const tab = tabs.find((t) => t.active) || tabs[0];
   if (!tab) throw new Error("No mail window open to open the message in");
   await browser.messageDisplay.open({ messageId, location: "tab", windowId: tab.windowId });
+}
+
+// The active classifier. A model trained in-page (dataset.html) and saved to
+// storage takes precedence over the model.json bundled with the extension, so
+// retraining takes effect immediately - no save-to-disk + reload-extension
+// dance, and the inspector/nudger stop showing stale bundled weights. Returns
+// the raw model ({vocab, idf, weights, bias, threshold}) or null if neither
+// a stored nor a bundled model exists.
+const MODEL_STORAGE_KEY = "trainedModel";
+
+async function loadActiveModel() {
+  const stored = await browser.storage.local.get({ [MODEL_STORAGE_KEY]: null });
+  if (stored[MODEL_STORAGE_KEY]) return stored[MODEL_STORAGE_KEY];
+  try {
+    const res = await fetch(browser.runtime.getURL("model.json"));
+    if (!res.ok) return null;
+    return await res.json();
+  } catch (e) {
+    return null;
+  }
+}
+
+async function saveActiveModel(model) {
+  await browser.storage.local.set({ [MODEL_STORAGE_KEY]: model });
 }
 
 // Prompts a native Save dialog (defaults to the Downloads folder, but the

@@ -2,11 +2,11 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>tb-nudge: run check / diagnostics</title>
+  <title>tb-nudge: diagnostics &amp; labeling</title>
   <style>
     body { font: 13px sans-serif; padding: 16px; max-width: 640px; }
     #runResult { font-size: 13px; margin-top: 10px; color: #333; }
-    #decisions h3 { margin-top: 16px; margin-bottom: 4px; font-size: 13px; }
+    #decisions summary { margin-top: 16px; margin-bottom: 4px; font-size: 13px; font-weight: bold; cursor: pointer; }
     #decisions table { width: 100%; border-collapse: collapse; font-size: 12px; }
     #decisions td { padding: 5px 6px; border-bottom: 1px solid #eee; }
     #decisions td.reason { color: #666; white-space: nowrap; }
@@ -14,10 +14,15 @@
     #decisions tr.clickable:hover { background: #f2f6fb; }
     #decisions td button, #decisions td a { font-size: 11px; }
     button { margin-right: 8px; }
+    #scanLog { display: none; background: #111; color: #0f0; font: 12px monospace;
+      padding: 8px; height: 160px; overflow-y: auto; white-space: pre-wrap; margin-top: 10px; }
+    .labelBox { margin-top: 18px; padding: 12px; border: 1px solid #ddd; border-radius: 6px; background: #fafafa; }
+    .labelBox h3 { margin: 0 0 6px; font-size: 13px; }
+    .labelBox ol { margin: 6px 0 0 18px; padding: 0; color: #444; }
   </style>
 </head>
 <body>
-  <h2>tb-nudge: run check / diagnostics</h2>
+  <h2>tb-nudge: diagnostics &amp; labeling</h2>
   <p>
     Triggers the same check the hourly alarm runs, immediately - useful for testing after a
     settings/model change instead of waiting. Note the runtime window here (Settings:
@@ -27,6 +32,23 @@
   <button id="runNow">Run check now</button>
   <button id="reset">Reset "already checked" state</button>
   <button id="downloadCorrections">Download corrections.json</button>
+
+  <div class="labelBox">
+    <h3>Label the whole mailbox once (to improve the model)</h3>
+    <p>
+      Sweeps every sent message and shows what the current model would decide -
+      <b>without</b> firing notifications or tagging anything. Then correct the wrong ones
+      below, and those human labels get folded into the next training run.
+    </p>
+    <ol>
+      <li><b>Scan all for labeling</b> - runs the full read-only pass (progress shown below).</li>
+      <li>In the results, click <b>"✗ Didn't need reply"</b> on wrong nudges and <b>"✓ Needed reply"</b> on wrong suppressions.</li>
+      <li>Re-open <code>dataset.html</code>, extract, and <b>Train</b> - your corrections are merged in automatically. (Or <b>Download corrections.json</b> here for <code>node train.js</code>.)</li>
+    </ol>
+    <button id="scanAll">Scan all for labeling</button>
+    <pre id="scanLog"></pre>
+  </div>
+
   <div id="runResult"></div>
   <div id="decisions"></div>
   <script src="mailapi.js"></script>

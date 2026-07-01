@@ -70,6 +70,40 @@ function looksLikeRequest(text) {
   return own.includes("?") || REQUEST_PHRASES.test(own);
 }
 
+// Weak-supervision label for one sent message, given its resolved reply facts.
+// Position in the thread is deliberately never consulted (see HANDOFF): only the
+// sent message's own content and the reply's content decide. Priority cascade:
+//   1. self-bump BEFORE any recipient reply (or no reply ever) -> POSITIVE.
+//      First-party evidence the sender chased it because it wasn't answered.
+//   2. the sent message is ITSELF a bare closeout ("thanks!", "sounds good")
+//      and asks nothing -> NEGATIVE. Judged from the sent content alone, so it
+//      needs no reply to prove it. This deliberately fires even with no reply:
+//      the HANDOFF's "silence is never a label" rule blocks the invalid
+//      inference "no reply came -> none was needed", NOT a content judgment.
+//      Without this source the negative class starves (23 rows / negRecall 0.00
+//      on the real mailbox), which is why the constraint is relaxed here.
+//   3. recipient replied AND the sent message itself reads as a request -> POSITIVE.
+//   4. recipient replied, sent wasn't a request, reply is a bare closeout that
+//      doesn't itself ask anything back -> NEGATIVE.
+//   otherwise SKIP (label null). True silence (non-closeout, no reply, no bump)
+//   is still never labeled.
+// inboxReply/selfBump: { date, body } or null (selfBump only needs date).
+// ownText: the sent message body (quote-tail-stripped is fine; strippers re-run).
+function labelSentMessage({ ownText, inboxReply, selfBump }) {
+  if (selfBump && (!inboxReply || selfBump.date < inboxReply.date)) {
+    return { label: 1, source: "self-bump" };
+  }
+  if (!looksLikeRequest(ownText) && isCloseout(ownText)) {
+    return { label: 0, source: "own-closeout" };
+  }
+  if (!inboxReply) return { label: null, source: "silence" };
+  if (looksLikeRequest(ownText)) return { label: 1, source: "request" };
+  if (isCloseout(inboxReply.body) && !looksLikeRequest(inboxReply.body)) {
+    return { label: 0, source: "reply-closeout" };
+  }
+  return { label: null, source: "ambiguous" };
+}
+
 // Lowercase, drop everything but letters (incl. German umlauts/ß since the
 // mailbox is English/German-mixed), drop very short tokens.
 function tokenize(text) {
@@ -219,11 +253,16 @@ function shuffleArray(arr) {
   return a;
 }
 
-function kFoldCV(rows, k, threshold, trainOpts) {
+// onProgress, if given, is awaited once before each fold ({ fold, total }). In
+// the browser it yields to the event loop so the "fold k/5" log actually paints
+// between the (synchronous, CPU-bound) folds instead of the page looking frozen.
+// Node callers (train.js) omit it and this stays effectively synchronous.
+async function kFoldCV(rows, k, threshold, trainOpts, onProgress) {
   const indices = shuffleArray(rows.map((_, i) => i));
   const foldSize = Math.ceil(indices.length / k);
   const metrics = [];
   for (let f = 0; f < k; f++) {
+    if (onProgress) await onProgress({ fold: f + 1, total: k });
     const testIdx = new Set(indices.slice(f * foldSize, (f + 1) * foldSize));
     const trainRows = rows.filter((_, i) => !testIdx.has(i));
     const testRows = rows.filter((_, i) => testIdx.has(i));
@@ -252,14 +291,16 @@ function averageMetric(metrics, key) {
 // Full pipeline: rows ({label, tokens}) in, {vocab, idf, weights, bias,
 // threshold, cvMetrics} out. Used by both train.js and dataset.js so the
 // in-page "Train classifier" button and the CLI script can't drift apart.
-function trainModel(rows, opts) {
+async function trainModel(rows, opts) {
   const minDf = opts && opts.minDf;
   const threshold = (opts && opts.threshold) || 0.5;
   const kFolds = (opts && opts.kFolds) || 5;
   const trainOpts = opts && opts.trainOpts;
+  const onProgress = opts && opts.onProgress;
 
-  const cvMetrics = kFoldCV(rows, kFolds, threshold, trainOpts);
+  const cvMetrics = await kFoldCV(rows, kFolds, threshold, trainOpts, onProgress);
 
+  if (onProgress) await onProgress({ phase: "final" });
   const { vocab, vocabIndex, idf } = buildVocab(rows, minDf);
   const X = rows.map((r) => computeTfidfVector(r.tokens, vocabIndex, idf));
   const y = rows.map((r) => r.label);
@@ -280,6 +321,7 @@ if (typeof module !== "undefined") {
     stripQuoteTail,
     isCloseout,
     looksLikeRequest,
+    labelSentMessage,
     tokenize,
     computeTfidfVector,
     sigmoid,

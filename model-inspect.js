@@ -17,15 +17,16 @@ function renderTable(tableEl, entries, cssClass) {
 }
 
 async function main() {
-  let model;
-  try {
-    const res = await fetch(browser.runtime.getURL("model.json"));
-    if (!res.ok) throw new Error("not found");
-    model = await res.json();
-  } catch (e) {
+  const model = await loadActiveModel(); // storage-trained model wins over bundled model.json
+  if (!model) {
     document.getElementById("empty").style.display = "block";
     return;
   }
+
+  const { trainedModel } = await browser.storage.local.get({ trainedModel: null });
+  document.getElementById("source").textContent = trainedModel
+    ? "source: trained in-app (Build dataset → Train)"
+    : "source: bundled model.json";
 
   document.getElementById("content").style.display = "block";
   document.getElementById("vocabSize").textContent = model.vocab.length;

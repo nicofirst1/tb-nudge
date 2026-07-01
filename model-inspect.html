@@ -23,10 +23,10 @@
     itself, as a "Why:" line).
   </p>
   <div id="empty" style="display:none; color:#a00;">
-    No model.json found — run <code>node train.js</code> first, then reload this page.
+    No model yet — open <b>Build dataset</b>, extract, then <b>Train</b> (or run <code>node train.js</code>), then reload this page.
   </div>
   <div id="content" style="display:none;">
-    <p>Vocabulary size: <span id="vocabSize"></span>, bias: <span id="bias"></span></p>
+    <p>Vocabulary size: <span id="vocabSize"></span>, bias: <span id="bias"></span> — <span id="source"></span></p>
     <div class="cols">
       <div class="col">
         <h3>Pushes toward "needs a reply"</h3>
@@ -38,6 +38,7 @@
       </div>
     </div>
   </div>
+  <script src="mailapi.js"></script>
   <script src="model-inspect.js"></script>
 </body>
 </html>

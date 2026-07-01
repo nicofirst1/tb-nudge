@@ -2,7 +2,7 @@
 <html>
 <head>
   <meta charset="utf-8" />
-  <title>tb-nudge: build training dataset</title>
+  <title>tb-nudge: train the classifier</title>
   <style>
     body { font: 13px sans-serif; padding: 16px; max-width: 640px; }
     #log, #trainLog { background: #111; color: #0f0; padding: 8px; height: 200px; overflow-y: auto;
@@ -11,17 +11,25 @@
     #downloadDataset, #downloadModel { display: none; margin-left: 8px; cursor: pointer;
            color: #1a5aa0; text-decoration: underline; }
     #trainSection { display: none; margin-top: 20px; padding-top: 14px; border-top: 1px solid #ccc; }
+    .section { margin-top: 20px; padding-top: 14px; border-top: 1px solid #ccc; }
+    #correctionsCount { font-weight: bold; }
   </style>
 </head>
 <body>
-  <h2>tb-nudge: build training dataset</h2>
+  <h2>tb-nudge: train the classifier</h2>
   <p>
-    Scans your Sent folders. Weak-supervision labels only, not manual —
-    see README before trusting this fully: spot-check a sample before training on it.
+    Two steps: <b>extract</b> a training dataset from your Sent folders, then <b>train</b> the
+    classifier on it. Any human corrections you've made (in the diagnostics page — the ✓/✗ buttons
+    or the "Scan all for labeling" pass) are merged in automatically at training time. The
+    extracted labels are heuristic, not hand-checked — spot-check a sample before trusting the model.
   </p>
-  <p><b>Positive</b> (needed a reply): first message in a thread that got a direct reply.<br />
-     <b>Negative</b> (didn't need a reply): a reply-to-a-reply that got a short/closing
-     acknowledgment back. Anything else is skipped as ambiguous.</p>
+
+  <h3>1. Extract dataset</h3>
+  <p><b>Positive</b> (needed a reply): you followed up on your own message before any reply
+     came, or the message asks something and got a reply.<br />
+     <b>Negative</b> (didn't need a reply): the message is itself a short acknowledgment
+     (thanks / sounds good), or it only drew a brief closing reply.<br />
+     Everything else — silence, or genuinely ambiguous — is skipped. Thread position isn't used.</p>
   <label>
     Lookback days (<code>-1</code> for entire mailbox)
     <input type="number" id="lookbackDays" value="730" style="width: 80px;" />
@@ -32,10 +40,23 @@
   <a id="downloadDataset">Download dataset.json</a>
   <div id="log"></div>
 
+  <div class="section">
+    <h3>2. Human corrections</h3>
+    <p>Corrections from the diagnostics page are stored and <b>merged automatically</b> when you
+       train below — no files to move. Add more with the ✓/✗ buttons there, or a whole-mailbox
+       pass via "Scan all for labeling".</p>
+    <p id="correctionsCount">Checking stored corrections…</p>
+    <button id="clearCorrections">Clear corrections</button>
+    <a id="downloadCorrections" style="margin-left: 8px; cursor: pointer; color: #1a5aa0; text-decoration: underline;">Download corrections.json</a>
+    <label style="margin-left: 8px;">Upload:
+      <input type="file" id="uploadCorrections" accept=".json,application/json" />
+    </label>
+  </div>
+
   <div id="trainSection">
-    <h3>Train classifier</h3>
-    <p>Trains on the dataset just extracted above (in this page, nothing sent anywhere).
-       Prints 5-fold cross-validation metrics, then offers <code>model.json</code> to save.</p>
+    <h3>3. Train classifier</h3>
+    <p>Trains on the dataset extracted above plus your stored corrections (in this page, nothing
+       sent anywhere). Prints 5-fold cross-validation metrics, then offers <code>model.json</code> to save.</p>
     <button id="train">Train classifier</button>
     <a id="downloadModel">Download model.json</a>
     <div id="trainLog"></div>

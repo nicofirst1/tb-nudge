@@ -42,17 +42,19 @@ const nNeg = rows.length - nPos;
 console.log(`${rows.length} rows: ${nPos} positive, ${nNeg} negative`);
 
 console.log(`\nRunning ${K_FOLDS}-fold cross-validation (rough signal only, dataset is tiny)...`);
-const { model, cvMetrics } = trainModel(rows, { threshold: THRESHOLD, kFolds: K_FOLDS });
-console.log(`Folds evaluated: ${cvMetrics.length}/${K_FOLDS}`);
-if (cvMetrics.length > 0) {
-  console.log(`Avg precision (needs-reply):    ${averageMetric(cvMetrics, "precision").toFixed(2)}`);
-  console.log(`Avg recall (needs-reply):       ${averageMetric(cvMetrics, "recall").toFixed(2)}`);
-  console.log(`Avg F1:                         ${averageMetric(cvMetrics, "f1").toFixed(2)}`);
-  console.log(`Avg recall on negatives:        ${averageMetric(cvMetrics, "negRecall").toFixed(2)}`);
-  console.log(`(negatives = correctly NOT nudging on a "didn't need reply" message)`);
-}
+(async () => {
+  const { model, cvMetrics } = await trainModel(rows, { threshold: THRESHOLD, kFolds: K_FOLDS });
+  console.log(`Folds evaluated: ${cvMetrics.length}/${K_FOLDS}`);
+  if (cvMetrics.length > 0) {
+    console.log(`Avg precision (needs-reply):    ${averageMetric(cvMetrics, "precision").toFixed(2)}`);
+    console.log(`Avg recall (needs-reply):       ${averageMetric(cvMetrics, "recall").toFixed(2)}`);
+    console.log(`Avg F1:                         ${averageMetric(cvMetrics, "f1").toFixed(2)}`);
+    console.log(`Avg recall on negatives:        ${averageMetric(cvMetrics, "negRecall").toFixed(2)}`);
+    console.log(`(negatives = correctly NOT nudging on a "didn't need reply" message)`);
+  }
 
-console.log("\nTraining final model on the full dataset...");
-const outPath = path.join(__dirname, "model.json");
-fs.writeFileSync(outPath, JSON.stringify(model, null, 2));
-console.log(`Wrote ${outPath} (vocab size ${model.vocab.length})`);
+  console.log("\nTraining final model on the full dataset...");
+  const outPath = path.join(__dirname, "model.json");
+  fs.writeFileSync(outPath, JSON.stringify(model, null, 2));
+  console.log(`Wrote ${outPath} (vocab size ${model.vocab.length})`);
+})();
