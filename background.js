@@ -81,6 +81,16 @@ async function hasReply(sentMessage, inboxFolders) {
   return false;
 }
 
+const TAG_LABEL = "Needs Reply";
+let tagKey = null; // resolved once at startup
+
+async function ensureTag() {
+  const existing = await browser.messages.tags.list();
+  const found = existing.find((t) => t.tag === TAG_LABEL);
+  if (found) return found.key;
+  return browser.messages.tags.create(TAG_LABEL, "#e6a817");
+}
+
 async function notifyFollowUp(message, notifiedMap) {
   const notifId = `nudge-${message.id}`;
   await browser.notifications.create(notifId, {
@@ -89,6 +99,11 @@ async function notifyFollowUp(message, notifiedMap) {
     message: `${message.subject || "(no subject)"}\nto ${(message.recipients || []).join(", ")}`,
   });
   notifiedMap[notifId] = message.id;
+
+  if (tagKey) {
+    const newTags = Array.from(new Set([...(message.tags || []), tagKey]));
+    await browser.messages.update(message.id, { flagged: true, tags: newTags });
+  }
 }
 
 async function runCheck() {
@@ -150,6 +165,7 @@ browser.alarms.onAlarm.addListener((alarm) => {
 
 (async () => {
   model = await loadModel();
+  tagKey = await ensureTag();
   const settings = await getSettings();
   await browser.alarms.create("nudge-check", { periodInMinutes: settings.checkIntervalMinutes });
   runCheck();

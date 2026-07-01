@@ -12,6 +12,9 @@
   "permissions": [
     "accountsRead",
     "messagesRead",
+    "messagesUpdate",
+    "messagesTags",
+    "messagesTagsList",
     "notifications",
     "storage",
     "alarms"

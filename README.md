@@ -17,6 +17,21 @@ below) that decides whether it actually looks like it needed a reply at all — 
 has been trained yet, this step is a no-op and everything unanswered gets nudged, same as
 before.
 
+## Flagging + a cross-account "Needs Reply" view
+
+Alongside the notification, tb-nudge flags the message (the star) and applies a "Needs
+Reply" tag, creating that tag on first run if it doesn't exist yet. Once tagged, sort any
+folder by the Flag column to bring them to the top, or — better, for a persistent
+cross-account view — create a **Saved Search folder** once (Thunderbird native feature,
+nothing to build): `Ctrl+Shift+F` → set folder to search to "All Folders"/your accounts →
+filter by **Tags: Needs Reply** → **Save As Search Folder**. That folder then live-updates
+with every message tb-nudge tags, across all four Gmail accounts, permanently in your
+folder pane.
+
+The tag is applied once, when first nudged — it isn't automatically cleared if a reply
+comes in later (known simplification; remove the tag/flag by hand if it bothers you, or
+ask to add auto-clearing later).
+
 ## Load it (temporary, for testing)
 
 1. Thunderbird → **Tools → Add-ons and Themes**
