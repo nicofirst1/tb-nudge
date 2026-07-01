@@ -1,11 +1,11 @@
 # tb-nudge
 
-Thunderbird MailExtension that nudges you about sent emails that never got a reply — like
-Gmail's "Nudge," but running locally: no data leaves your machine, and the classifier that
-judges whether a reply was actually expected is trained on your own mailbox.
+Thunderbird MailExtension that nudges you about sent emails that never got a reply, the same
+idea as Gmail's "Nudge" but running locally: no data leaves your machine, and the classifier
+that judges whether a reply was expected is trained on your own mailbox.
 
 Requires Thunderbird 128+. Personal project, not (yet) published on
-[addons.thunderbird.net](https://addons.thunderbird.net/) — see "Load it" below for local
+[addons.thunderbird.net](https://addons.thunderbird.net/); see "Load it" below for local
 install.
 
 ## How it decides "no reply yet"
@@ -18,23 +18,22 @@ missing. If nothing matches, it fires one desktop notification and stops re-chec
 message. Clicking the notification opens the original sent message.
 
 Before a match is scored, `needsReply()` runs it through a locally-trained classifier (see
-below) that decides whether it actually looks like it needed a reply at all — if no model
-has been trained yet, this step is a no-op and everything unanswered gets nudged, same as
-before.
+below) that decides whether it looks like it needed a reply at all. If no model has been
+trained yet, this step is a no-op, and everything unanswered gets nudged, same as before.
 
 ## Flagging + a cross-account "Needs Reply" view
 
 Alongside the notification, tb-nudge flags the message (the star) and applies a "Needs
 Reply" tag, creating that tag on first run if it doesn't exist yet. Once tagged, sort any
-folder by the Flag column to bring them to the top, or — better, for a persistent
-cross-account view — create a **Saved Search folder** once (Thunderbird native feature,
-nothing to build): `Ctrl+Shift+F` → set folder to search to "All Folders"/your accounts →
-filter by **Tags: Needs Reply** → **Save As Search Folder**. That folder then live-updates
-with every message tb-nudge tags, across all your accounts, permanently in your folder pane.
+folder by the Flag column to bring them to the top, or, for a persistent cross-account view,
+create a **Saved Search folder** once (Thunderbird native feature, nothing to build):
+`Ctrl+Shift+F` → set folder to search to "All Folders"/your accounts → filter by
+**Tags: Needs Reply** → **Save As Search Folder**. That folder then live-updates with every
+message tb-nudge tags, across all your accounts, permanently in your folder pane.
 
-The tag is applied once, when first nudged — it isn't automatically cleared if a reply
-comes in later (known simplification; remove the tag/flag by hand if it bothers you, or
-ask to add auto-clearing later).
+The tag is applied once, when first nudged: it isn't automatically cleared if a reply comes
+in later (known simplification; remove the tag/flag by hand if it bothers you, or ask to add
+auto-clearing later).
 
 ## Load it (temporary, for testing)
 
@@ -42,7 +41,7 @@ ask to add auto-clearing later).
 2. Gear icon (⚙) → **Debug Add-ons**
 3. **Load Temporary Add-on** → select this folder's `manifest.json`
 
-Temporary add-ons unload when Thunderbird restarts — you'll need to reload it each
+Temporary add-ons unload when Thunderbird restarts, so you'll need to reload it each
 session. Once you're happy with it, the next step is getting it signed for permanent
 install (AMO unlisted submission, or `xpinstall.signatures.required=false` in
 `about:config` for a fully local permanent install).

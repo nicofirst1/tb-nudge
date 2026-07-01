@@ -181,6 +181,10 @@ browser.notifications.onClicked.addListener(async (notifId) => {
   const notifiedMap = await getNotifiedMap();
   const messageId = notifiedMap[notifId];
   if (messageId) {
+    // Force a body fetch before opening - messageDisplay.open() seems not to
+    // trigger the same on-demand IMAP body fetch that clicking a message in
+    // the normal UI does, leaving the body blank.
+    await browser.messages.getFull(messageId, { decodeContent: true });
     // location: "window", not "tab" - the background page has no window of
     // its own to open a tab in, so a standalone message window is the only
     // unambiguous target.
