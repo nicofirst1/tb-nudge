@@ -3,15 +3,13 @@
 <head>
   <meta charset="utf-8" />
   <style>
-    body { font: 13px sans-serif; padding: 10px; width: 420px; }
+    body { font: 13px sans-serif; padding: 10px; width: 280px; }
     label { display: block; margin-top: 10px; }
     input { width: 60px; }
     #status { margin-top: 10px; color: green; font-size: 12px; }
     a { display: block; margin-top: 14px; font-size: 12px; }
     #info { margin-top: 14px; padding-top: 10px; border-top: 1px solid #ccc;
              font-size: 11px; color: #555; line-height: 1.6; }
-    #runResult { font-size: 12px; margin-top: 6px; color: #333; }
-    #decisions { font-size: 11px; max-height: 160px; overflow-y: auto; margin-top: 4px; }
   </style>
 </head>
 <body>
@@ -26,13 +24,9 @@
   <button id="save">Save</button>
   <div id="status"></div>
 
-  <button id="runNow" style="margin-top: 12px;">Run check now</button>
-  <button id="reset" style="margin-top: 4px;">Reset "already checked" state</button>
-  <div id="runResult"></div>
-  <div id="decisions"></div>
-
   <a href="dataset.html" target="_blank">Build ML training dataset &rarr;</a>
   <a href="model-inspect.html" target="_blank">Inspect classifier word weights &rarr;</a>
+  <a href="diagnostics.html" target="_blank">Run check / diagnostics &rarr;</a>
 
   <div id="info">
     tb-nudge v<span id="version">?</span><br />

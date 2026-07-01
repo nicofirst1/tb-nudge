@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>tb-nudge: run check / diagnostics</title>
+  <style>
+    body { font: 13px sans-serif; padding: 16px; max-width: 640px; }
+    #runResult { font-size: 13px; margin-top: 10px; color: #333; }
+    #decisions { font-size: 12px; margin-top: 10px; }
+    #decisions div { padding: 4px 0; border-bottom: 1px solid #eee; }
+    button { margin-right: 8px; }
+  </style>
+</head>
+<body>
+  <h2>tb-nudge: run check / diagnostics</h2>
+  <p>
+    Triggers the same check the hourly alarm runs, immediately - useful for testing after a
+    settings/model change instead of waiting. Note the runtime window here (Settings:
+    "nudge me after X hours" / "stop looking back after Y days") is separate and usually much
+    narrower than the 730-day window <code>dataset.html</code> uses for training data.
+  </p>
+  <button id="runNow">Run check now</button>
+  <button id="reset">Reset "already checked" state</button>
+  <div id="runResult"></div>
+  <div id="decisions"></div>
+  <script src="diagnostics.js"></script>
+</body>
+</html>
