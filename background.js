@@ -206,11 +206,7 @@ browser.notifications.onClicked.addListener(async (notifId) => {
   // reindex) and throw NS_MSG_ERROR_FOLDER_MISSING when opened.
   const messageId = await resolveCurrentMessageId(headerMessageId);
   if (!messageId) return; // message moved/deleted since it was nudged
-  await browser.messages.getFull(messageId, { decodeContent: true });
-  // location: "window", not "tab" - the background page has no window of
-  // its own to open a tab in, so a standalone message window is the only
-  // unambiguous target.
-  await browser.messageDisplay.open({ messageId, location: "window" });
+  await showMessageInMailTab(messageId);
 });
 
 browser.alarms.onAlarm.addListener((alarm) => {
