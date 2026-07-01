@@ -32,7 +32,10 @@ document.getElementById("runNow").addEventListener("click", async (event) => {
   const resultEl = document.getElementById("runResult");
   resultEl.textContent = "Running...";
   const result = await browser.runtime.sendMessage("run-check-now");
-  resultEl.textContent = `Scanned ${result.scanned} new message(s), nudged ${result.notified}.`;
+  resultEl.textContent =
+    `Scanned ${result.scanned} new message(s): ${result.notified} nudged, ` +
+    `${result.alreadyReplied} already had a reply, ` +
+    `${result.suppressedByClassifier} suppressed by the classifier.`;
   event.target.disabled = false;
 });
 

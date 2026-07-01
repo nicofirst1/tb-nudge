@@ -125,6 +125,8 @@ async function runCheck() {
   const seenIds = new Set();
   let scanned = 0;
   let notified = 0;
+  let alreadyReplied = 0;
+  let suppressedByClassifier = 0;
 
   for (const folder of sentFolders) {
     const list = await browser.messages.query({
@@ -141,11 +143,14 @@ async function runCheck() {
       const replied = await hasReply(message, inboxFolders);
       if (replied) {
         handled.add(message.id);
+        alreadyReplied++;
       } else {
         const result = await classify(message);
         if (result.needsReply) {
           await notifyFollowUp(message, notifiedMap, result.topWords);
           notified++;
+        } else {
+          suppressedByClassifier++;
         }
         handled.add(message.id); // either notified, or classifier says it didn't need a reply
       }
@@ -159,7 +164,7 @@ async function runCheck() {
 
   await saveHandledIds(handled);
   await browser.storage.local.set({ notifiedMap });
-  return { scanned, notified };
+  return { scanned, notified, alreadyReplied, suppressedByClassifier };
 }
 
 browser.notifications.onClicked.addListener(async (notifId) => {
