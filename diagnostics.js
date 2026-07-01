@@ -4,6 +4,15 @@ const SECTIONS = [
   { outcome: "suppressed", title: "Suppressed" },
 ];
 
+async function openByHeaderMessageId(headerMessageId, folders) {
+  const messageId = await resolveCurrentMessageId(headerMessageId, folders);
+  if (!messageId) {
+    alert("Could not find this email anymore - it may have moved or been deleted.");
+    return;
+  }
+  await openMessageInTab(messageId);
+}
+
 function buildTable(items) {
   const table = document.createElement("table");
   for (const d of items) {
@@ -17,12 +26,7 @@ function buildTable(items) {
         // and throw NS_MSG_ERROR_FOLDER_MISSING when opened. Scoped to Sent
         // folders specifically - see resolveCurrentMessageId in mailapi.js.
         const sentFolders = await browser.folders.query({ specialUse: ["sent"] });
-        const messageId = await resolveCurrentMessageId(d.headerMessageId, sentFolders);
-        if (!messageId) {
-          alert("Could not find this email anymore - it may have moved or been deleted.");
-          return;
-        }
-        await openMessageInTab(messageId);
+        await openByHeaderMessageId(d.headerMessageId, sentFolders);
       } catch (err) {
         console.error("tb-nudge: failed to open message", d, err);
         alert(`Could not open this email: ${err.message}`);
@@ -37,6 +41,45 @@ function buildTable(items) {
     reasonCell.className = "reason";
     reasonCell.textContent = d.words && d.words.length ? d.words.join(", ") : "—";
     row.appendChild(reasonCell);
+
+    const actionCell = document.createElement("td");
+    if (d.outcome === "suppressed") {
+      const btn = document.createElement("button");
+      btn.textContent = "✓ Needed reply";
+      btn.title = "Tag/flag this now, and remember it as a training correction";
+      btn.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        btn.disabled = true;
+        try {
+          const result = await browser.runtime.sendMessage({
+            type: "correct-suppression",
+            headerMessageId: d.headerMessageId,
+          });
+          btn.textContent = result.ok ? "Corrected" : `Failed: ${result.error}`;
+        } catch (err) {
+          console.error("tb-nudge: correction failed", d, err);
+          btn.textContent = "Failed";
+        }
+      });
+      actionCell.appendChild(btn);
+    } else if (d.outcome === "already replied" && d.replyHeaderMessageId) {
+      const link = document.createElement("a");
+      link.textContent = "View reply →";
+      link.href = "#";
+      link.addEventListener("click", async (event) => {
+        event.stopPropagation();
+        event.preventDefault();
+        try {
+          const inboxFolders = await browser.folders.query({ specialUse: ["inbox"] });
+          await openByHeaderMessageId(d.replyHeaderMessageId, inboxFolders);
+        } catch (err) {
+          console.error("tb-nudge: failed to open reply", d, err);
+          alert(`Could not open the reply: ${err.message}`);
+        }
+      });
+      actionCell.appendChild(link);
+    }
+    row.appendChild(actionCell);
 
     table.appendChild(row);
   }
@@ -78,4 +121,13 @@ document.getElementById("reset").addEventListener("click", async (event) => {
   resultEl.textContent = 'Reset. Click "Run check now" to re-scan everything in the window.';
   document.getElementById("decisions").innerHTML = "";
   event.target.disabled = false;
+});
+
+document.getElementById("downloadCorrections").addEventListener("click", async () => {
+  const corrections = await browser.runtime.sendMessage("get-corrections");
+  if (!corrections || corrections.length === 0) {
+    alert('No corrections yet - click "✓ Needed reply" on a suppressed row first.');
+    return;
+  }
+  await downloadJson(corrections, "tb-nudge-corrections.json");
 });

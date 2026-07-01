@@ -60,7 +60,9 @@ async function classify(message) {
   return { needsReply: proba >= model.threshold, topWords, bottomWords };
 }
 
-async function hasReply(sentMessage, inboxFolders) {
+// Returns the matching reply MessageHeader (so callers can e.g. open it),
+// or null if none was found.
+async function findReply(sentMessage, inboxFolders) {
   for (const folder of inboxFolders) {
     const list = await browser.messages.query({
       folderId: folder.id,
@@ -78,11 +80,11 @@ async function hasReply(sentMessage, inboxFolders) {
           refs
         )
       ) {
-        return true;
+        return candidate;
       }
     }
   }
-  return false;
+  return null;
 }
 
 const TAG_LABEL = "Needs Reply";
@@ -93,6 +95,12 @@ async function ensureTag() {
   const found = existing.find((t) => t.tag === TAG_LABEL);
   if (found) return found.key;
   return browser.messages.tags.create(TAG_LABEL, "#e6a817");
+}
+
+async function applyNeedsReplyTag(message) {
+  if (!tagKey) return;
+  const newTags = Array.from(new Set([...(message.tags || []), tagKey]));
+  await browser.messages.update(message.id, { flagged: true, tags: newTags });
 }
 
 async function notifyFollowUp(message, notifiedMap, topWords) {
@@ -112,10 +120,7 @@ async function notifyFollowUp(message, notifiedMap, topWords) {
   // stale storage and silently did nothing. This closes that race.
   await browser.storage.local.set({ notifiedMap });
 
-  if (tagKey) {
-    const newTags = Array.from(new Set([...(message.tags || []), tagKey]));
-    await browser.messages.update(message.id, { flagged: true, tags: newTags });
-  }
+  await applyNeedsReplyTag(message);
 }
 
 async function runCheck() {
@@ -148,8 +153,8 @@ async function runCheck() {
       if (handled.has(message.id)) continue;
       scanned++;
 
-      const replied = await hasReply(message, inboxFolders);
-      if (replied) {
+      const reply = await findReply(message, inboxFolders);
+      if (reply) {
         handled.add(message.id);
         alreadyReplied++;
         decisions.push({
@@ -158,6 +163,7 @@ async function runCheck() {
           subject: message.subject,
           outcome: "already replied",
           words: [],
+          replyHeaderMessageId: reply.headerMessageId,
         });
       } else {
         const result = await classify(message);
@@ -215,6 +221,27 @@ browser.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "nudge-check") runCheck();
 });
 
+// The classifier wrongly suppressed a nudge: tag/flag the message right now
+// (fixing the immediate miss), and save it as a labeled example (needed a
+// reply) so a future retrain can learn from the mistake. See train.js's
+// optional corrections-file argument.
+async function correctSuppression(headerMessageId) {
+  const sentFolders = await browser.folders.query({ specialUse: ["sent"] });
+  const messageId = await resolveCurrentMessageId(headerMessageId, sentFolders);
+  if (!messageId) return { ok: false, error: "Message not found - it may have moved or been deleted." };
+
+  const message = await browser.messages.get(messageId);
+  await applyNeedsReplyTag(message);
+
+  const text = await getBodyText(messageId);
+  const ownText = stripQuoteTail(text);
+  const { corrections } = await browser.storage.local.get({ corrections: [] });
+  corrections.push({ label: 1, subject: message.subject, text: ownText });
+  await browser.storage.local.set({ corrections });
+
+  return { ok: true, correctionCount: corrections.length };
+}
+
 // Lets the options page trigger a check on demand (for testing, instead of
 // waiting up to checkIntervalMinutes for the alarm to fire) and read status.
 browser.runtime.onMessage.addListener((msg) => {
@@ -231,6 +258,12 @@ browser.runtime.onMessage.addListener((msg) => {
     // everything currently in the window - for testing after a code change,
     // or if you just want a fresh pass with the current settings/model.
     return browser.storage.local.remove(["handledIds", "notifiedMap"]).then(() => ({ reset: true }));
+  }
+  if (msg && msg.type === "correct-suppression") {
+    return correctSuppression(msg.headerMessageId);
+  }
+  if (msg === "get-corrections") {
+    return browser.storage.local.get({ corrections: [] }).then((r) => r.corrections);
   }
   return undefined;
 });

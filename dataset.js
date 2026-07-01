@@ -59,16 +59,6 @@ async function buildDataset(log, lookbackDays) {
   return rows;
 }
 
-// Prompts a native Save dialog (defaults to the Downloads folder, but the
-// user can navigate anywhere - e.g. straight into this extension's own
-// folder) instead of the old anchor-click trick, which always lands in
-// Downloads with no way to redirect it.
-async function downloadJson(obj, suggestedName) {
-  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  await browser.downloads.download({ url, filename: suggestedName, saveAs: true });
-}
-
 async function getLastDatasetInfo() {
   const { lastDatasetInfo } = await browser.storage.local.get({ lastDatasetInfo: null });
   return lastDatasetInfo;

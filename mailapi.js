@@ -131,3 +131,14 @@ async function openMessageInTab(messageId) {
   await browser.messageDisplay.open({ messageId, location: "tab", windowId: tab.windowId });
 }
 
+// Prompts a native Save dialog (defaults to the Downloads folder, but the
+// user can navigate anywhere - e.g. straight into this extension's own
+// folder) instead of an anchor-click download, which always lands in
+// Downloads with no way to redirect it. Shared by dataset.js and
+// diagnostics.js, both of which need to save JSON the user picked up.
+async function downloadJson(obj, suggestedName) {
+  const blob = new Blob([JSON.stringify(obj, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  await browser.downloads.download({ url, filename: suggestedName, saveAs: true });
+}
+

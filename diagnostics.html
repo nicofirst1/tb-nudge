@@ -12,6 +12,7 @@
     #decisions td.reason { color: #666; white-space: nowrap; }
     #decisions tr.clickable { cursor: pointer; }
     #decisions tr.clickable:hover { background: #f2f6fb; }
+    #decisions td button, #decisions td a { font-size: 11px; }
     button { margin-right: 8px; }
   </style>
 </head>
@@ -25,6 +26,7 @@
   </p>
   <button id="runNow">Run check now</button>
   <button id="reset">Reset "already checked" state</button>
+  <button id="downloadCorrections">Download corrections.json</button>
   <div id="runResult"></div>
   <div id="decisions"></div>
   <script src="mailapi.js"></script>

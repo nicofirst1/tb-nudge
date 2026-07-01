@@ -123,6 +123,16 @@ a re-scan of everything in the current window). Each run shows a per-message tra
 outcome (nudged / already replied / suppressed), and the words behind that decision. Handy
 after changing the model or the matching logic, without waiting for the alarm.
 
+Each row has a contextual action: **already replied** rows get a "View reply →" link (opens
+the actual reply, not just the original sent message - useful since the sent message alone
+doesn't show what resolved it); **suppressed** rows get a "✓ Needed reply" button, for when
+the classifier gets it wrong. That button immediately tags/flags the message *and* saves it
+as a labeled example via **Download corrections.json**, which `train.js` can merge in:
+
+```
+node train.js ~/Downloads/tb-nudge-dataset.json ~/Downloads/tb-nudge-corrections.json
+```
+
 ## Tests
 
 ```

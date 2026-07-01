@@ -2,7 +2,10 @@
 // with dataset.html's in-page "Train classifier" button, so both stay in
 // sync. See lib.js if you're looking for the TF-IDF/logistic-regression code.
 //
-// Usage: node train.js [path-to-dataset.json]
+// Usage: node train.js [path-to-dataset.json] [path-to-corrections.json]
+// The corrections file is optional - export it from diagnostics.html
+// ("Download corrections.json") after marking any wrongly-suppressed nudges
+// as "needed reply". Its rows are merged in before training.
 // Writes model.json next to this script (gitignored - it's derived from your
 // own email vocabulary, more sensitive than the code that produces it).
 
@@ -12,6 +15,7 @@ const os = require("os");
 const { tokenize, averageMetric, trainModel } = require("./lib.js");
 
 const datasetPath = process.argv[2] || path.join(os.homedir(), "Downloads", "tb-nudge-dataset.json");
+const correctionsPath = process.argv[3];
 const K_FOLDS = 5;
 const THRESHOLD = 0.5;
 
@@ -24,7 +28,15 @@ function loadRows(p) {
 }
 
 console.log(`Loading dataset from ${datasetPath}`);
-const rows = loadRows(datasetPath);
+let rows = loadRows(datasetPath);
+
+if (correctionsPath) {
+  console.log(`Merging corrections from ${correctionsPath}`);
+  const correctionRows = loadRows(correctionsPath);
+  rows = rows.concat(correctionRows);
+  console.log(`Merged ${correctionRows.length} correction row(s)`);
+}
+
 const nPos = rows.filter((r) => r.label === 1).length;
 const nNeg = rows.length - nPos;
 console.log(`${rows.length} rows: ${nPos} positive, ${nNeg} negative`);
