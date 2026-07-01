@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>tb-nudge: classifier word weights</title>
+  <style>
+    body { font: 13px sans-serif; padding: 16px; max-width: 720px; }
+    .cols { display: flex; gap: 32px; margin-top: 16px; }
+    .col { flex: 1; }
+    .col h3 { margin-bottom: 4px; }
+    table { border-collapse: collapse; width: 100%; }
+    td { padding: 2px 6px; font: 12px monospace; }
+    td.weight { text-align: right; color: #555; }
+    .needs td.weight { color: #a05a00; }
+    .noneed td.weight { color: #1a5aa0; }
+  </style>
+</head>
+<body>
+  <h2>tb-nudge: classifier word weights</h2>
+  <p>
+    Every word the model has ever seen, ranked by learned weight. This is the whole model's
+    global view — not tied to any one message (that explanation shows up in the notification
+    itself, as a "Why:" line).
+  </p>
+  <div id="empty" style="display:none; color:#a00;">
+    No model.json found — run <code>node train.js</code> first, then reload this page.
+  </div>
+  <div id="content" style="display:none;">
+    <p>Vocabulary size: <span id="vocabSize"></span>, bias: <span id="bias"></span></p>
+    <div class="cols">
+      <div class="col">
+        <h3>Pushes toward "needs a reply"</h3>
+        <table id="needsTable"></table>
+      </div>
+      <div class="col">
+        <h3>Pushes toward "no reply needed"</h3>
+        <table id="noneedTable"></table>
+      </div>
+    </div>
+  </div>
+  <script src="model-inspect.js"></script>
+</body>
+</html>

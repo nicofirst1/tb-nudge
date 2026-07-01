@@ -10,6 +10,7 @@ const {
   computeTfidfVector,
   sigmoid,
   predictProba,
+  topContributions,
 } = require("./lib.js");
 
 function approxEqual(a, b, eps = 1e-6) {
@@ -121,5 +122,20 @@ assert.strictEqual(vec.length, 2, "vector length matches idf length, unknown tok
 
 approxEqual(sigmoid(0), 0.5);
 approxEqual(predictProba([1, 0], [2, 3], -1), sigmoid(1));
+
+const vocab3 = ["please", "meeting", "thanks"];
+const weights3 = [2, 1, -3];
+// vec: "please" and "meeting" present (positive contribution), "thanks" absent (vec=0, ignored)
+assert.deepStrictEqual(
+  topContributions([1.5, 0.5, 0], vocab3, weights3, 2),
+  ["please", "meeting"],
+  "ranks present words by contribution, ignores absent (0) ones"
+);
+assert.deepStrictEqual(
+  topContributions([0, 0, 2], vocab3, weights3, 5),
+  ["thanks"],
+  "a present word with negative contribution still shows up if it's the only one"
+);
+assert.deepStrictEqual(topContributions([0, 0, 0], vocab3, weights3, 3), [], "no present words -> empty");
 
 console.log("ok - all lib.js tests passed");

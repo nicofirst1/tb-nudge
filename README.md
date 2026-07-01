@@ -87,6 +87,25 @@ pool: re-run `dataset.html` periodically as more thread closeouts accumulate, th
 After retraining, **reload the temporary add-on** — `background.js` loads `model.json` once
 at startup, so it won't pick up a new model until reloaded.
 
+## Explainability
+
+Every nudge notification includes a `Why:` line — the 3 words from that specific message
+that contributed most to the classifier's decision (highest `tfidf value x learned weight`).
+That's the per-message explanation.
+
+For the model's *global* view — every word it's ever seen, ranked by learned weight —
+open Add-ons Manager → tb-nudge → Preferences → **Inspect classifier word weights**. Two
+columns: words that push toward "needs a reply" and words that push toward "no reply
+needed", with their raw weight. Useful for sanity-checking the model isn't keying off
+something spurious (it currently is, a little — see the "what's inside model.json"
+discussion in the chat history; that's expected with this little negative-class data).
+
+## Testing without waiting for the hourly alarm
+
+Preferences → **Run check now** — runs `runCheck()` immediately instead of waiting for the
+alarm, and reports how many messages were scanned and how many got nudged. Handy for testing
+after changing the model or the matching logic.
+
 ## Tests
 
 ```

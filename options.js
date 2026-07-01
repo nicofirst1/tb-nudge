@@ -16,4 +16,34 @@ document.getElementById("save").addEventListener("click", async () => {
   setTimeout(() => (status.textContent = ""), 1500);
 });
 
+async function loadStatus() {
+  const manifest = browser.runtime.getManifest();
+  document.getElementById("version").textContent = manifest.version;
+
+  const status = await browser.runtime.sendMessage("get-status");
+  document.getElementById("modelStatus").textContent = status.modelLoaded
+    ? `trained (${status.vocabSize} words)`
+    : "not trained yet - run train.js";
+  document.getElementById("tagStatus").textContent = status.tagKey || "not created yet";
+}
+
+document.getElementById("runNow").addEventListener("click", async (event) => {
+  event.target.disabled = true;
+  const resultEl = document.getElementById("runResult");
+  resultEl.textContent = "Running...";
+  const result = await browser.runtime.sendMessage("run-check-now");
+  resultEl.textContent = `Scanned ${result.scanned} new message(s), nudged ${result.notified}.`;
+  event.target.disabled = false;
+});
+
+document.getElementById("reset").addEventListener("click", async (event) => {
+  event.target.disabled = true;
+  const resultEl = document.getElementById("runResult");
+  resultEl.textContent = "Resetting...";
+  await browser.runtime.sendMessage("reset-handled");
+  resultEl.textContent = 'Reset. Click "Run check now" to re-scan everything in the window.';
+  event.target.disabled = false;
+});
+
 load();
+loadStatus();
