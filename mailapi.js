@@ -98,9 +98,21 @@ async function getBodyText(messageId) {
 // opening a stale one throws NS_MSG_ERROR_FOLDER_MISSING). headerMessageId
 // (the actual RFC Message-ID) is stable, so re-look-up the CURRENT id right
 // before opening instead of trusting whatever id we stored earlier.
-async function resolveCurrentMessageId(headerMessageId) {
+//
+// sentFolders, if given, scopes the lookup to those folders. Gmail exposes
+// the same physical message under multiple IMAP folders (Sent, All Mail,
+// labels) - an unscoped query can match the "All Mail" copy instead of the
+// Sent copy, and Thunderbird's tree-view handles that aggregated/virtual
+// folder differently (selecting a message there silently fails to display).
+// We only ever deal with sent messages here, so scoping to the real Sent
+// folder(s) avoids that ambiguity entirely.
+async function resolveCurrentMessageId(headerMessageId, sentFolders) {
   if (!headerMessageId) return null;
-  const list = await browser.messages.query({ headerMessageId });
+  const queryInfo = { headerMessageId };
+  if (sentFolders && sentFolders.length) {
+    queryInfo.folderId = sentFolders.map((f) => f.id);
+  }
+  const list = await browser.messages.query(queryInfo);
   return list.messages && list.messages[0] ? list.messages[0].id : null;
 }
 

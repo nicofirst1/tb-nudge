@@ -14,8 +14,10 @@ function buildTable(items) {
       try {
         // Re-resolve the CURRENT message.id from the stable Message-ID header
         // instead of trusting d.id, which can go stale (IMAP resync/reindex)
-        // and throw NS_MSG_ERROR_FOLDER_MISSING when opened.
-        const messageId = await resolveCurrentMessageId(d.headerMessageId);
+        // and throw NS_MSG_ERROR_FOLDER_MISSING when opened. Scoped to Sent
+        // folders specifically - see resolveCurrentMessageId in mailapi.js.
+        const sentFolders = await browser.folders.query({ specialUse: ["sent"] });
+        const messageId = await resolveCurrentMessageId(d.headerMessageId, sentFolders);
         if (!messageId) {
           alert("Could not find this email anymore - it may have moved or been deleted.");
           return;

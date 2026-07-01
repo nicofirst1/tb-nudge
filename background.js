@@ -203,8 +203,10 @@ browser.notifications.onClicked.addListener(async (notifId) => {
   if (!headerMessageId) return;
   // Re-resolve the CURRENT message.id from the stable Message-ID header
   // rather than trusting a stored id, which can go stale (IMAP resync/
-  // reindex) and throw NS_MSG_ERROR_FOLDER_MISSING when opened.
-  const messageId = await resolveCurrentMessageId(headerMessageId);
+  // reindex) and throw NS_MSG_ERROR_FOLDER_MISSING when opened. Scoped to
+  // Sent folders specifically - see resolveCurrentMessageId in mailapi.js.
+  const sentFolders = await browser.folders.query({ specialUse: ["sent"] });
+  const messageId = await resolveCurrentMessageId(headerMessageId, sentFolders);
   if (!messageId) return; // message moved/deleted since it was nudged
   await showMessageInMailTab(messageId);
 });
