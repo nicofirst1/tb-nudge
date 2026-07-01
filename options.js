@@ -6,7 +6,7 @@ async function load() {
   document.getElementById("lookbackDays").value = settings.lookbackDays;
 }
 
-document.getElementById("save").addEventListener("click", async () => {
+async function saveSettings() {
   await browser.storage.local.set({
     hoursThreshold: Number(document.getElementById("hoursThreshold").value) || DEFAULTS.hoursThreshold,
     lookbackDays: Number(document.getElementById("lookbackDays").value) || DEFAULTS.lookbackDays,
@@ -14,12 +14,12 @@ document.getElementById("save").addEventListener("click", async () => {
   const status = document.getElementById("status");
   status.textContent = "Saved.";
   setTimeout(() => (status.textContent = ""), 1500);
-});
+}
+
+document.getElementById("hoursThreshold").addEventListener("change", saveSettings);
+document.getElementById("lookbackDays").addEventListener("change", saveSettings);
 
 async function loadStatus() {
-  const manifest = browser.runtime.getManifest();
-  document.getElementById("version").textContent = manifest.version;
-
   const status = await browser.runtime.sendMessage("get-status");
   document.getElementById("modelStatus").textContent = status.modelLoaded
     ? `trained (${status.vocabSize} words)`

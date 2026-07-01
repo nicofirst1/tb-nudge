@@ -12,3 +12,15 @@
   plain (no icon, minimal layout, bare-bones styling). Not worth doing while still validating
   correctness/model quality - revisit once the functionality itself is solid and actually
   being considered for the marketplace.
+
+
+- Can we remove the save button? So that ideally it's saved when you change the value.
+
+- Clicking on the notification of not reply yet doesn't really open the email, it should probably open the email.
+- In the run check diagnostik I only see like a weird list. The list should be split between nudged already had a reply and suppressed. All of this should be clickable to the link to the email. And the reason for um like the reason should be a different column.
+
+- We should also either add the instructions or automatically create a folder where all the tags are visible.
+
+- Speaking of visual polish, uh we should also polish the diagnosis uh page.
+
+- We should also remove the version from the preferences.

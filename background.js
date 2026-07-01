@@ -104,6 +104,11 @@ async function notifyFollowUp(message, notifiedMap, topWords) {
     message: `${message.subject || "(no subject)"}\nto ${(message.recipients || []).join(", ")}${reasonLine}`,
   });
   notifiedMap[notifId] = message.id;
+  // Persist immediately: onClicked can fire while runCheck() is still mid-scan
+  // (still processing other folders/messages), before the batched write at the
+  // end of runCheck() would otherwise happen - clicking during that window read
+  // stale storage and silently did nothing. This closes that race.
+  await browser.storage.local.set({ notifiedMap });
 
   if (tagKey) {
     const newTags = Array.from(new Set([...(message.tags || []), tagKey]));
@@ -145,16 +150,16 @@ async function runCheck() {
       if (replied) {
         handled.add(message.id);
         alreadyReplied++;
-        decisions.push({ subject: message.subject, outcome: "already replied", words: [] });
+        decisions.push({ id: message.id, subject: message.subject, outcome: "already replied", words: [] });
       } else {
         const result = await classify(message);
         if (result.needsReply) {
           await notifyFollowUp(message, notifiedMap, result.topWords);
           notified++;
-          decisions.push({ subject: message.subject, outcome: "nudged", words: result.topWords });
+          decisions.push({ id: message.id, subject: message.subject, outcome: "nudged", words: result.topWords });
         } else {
           suppressedByClassifier++;
-          decisions.push({ subject: message.subject, outcome: "suppressed", words: result.bottomWords });
+          decisions.push({ id: message.id, subject: message.subject, outcome: "suppressed", words: result.bottomWords });
         }
         handled.add(message.id); // either notified, or classifier says it didn't need a reply
       }
@@ -167,7 +172,8 @@ async function runCheck() {
   }
 
   await saveHandledIds(handled);
-  await browser.storage.local.set({ notifiedMap });
+  // notifiedMap is no longer written here - notifyFollowUp() persists it
+  // immediately per-notification now, so this batched write would be redundant.
   return { scanned, notified, alreadyReplied, suppressedByClassifier, decisions };
 }
 

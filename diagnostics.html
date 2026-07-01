@@ -6,8 +6,12 @@
   <style>
     body { font: 13px sans-serif; padding: 16px; max-width: 640px; }
     #runResult { font-size: 13px; margin-top: 10px; color: #333; }
-    #decisions { font-size: 12px; margin-top: 10px; }
-    #decisions div { padding: 4px 0; border-bottom: 1px solid #eee; }
+    #decisions h3 { margin-top: 16px; margin-bottom: 4px; font-size: 13px; }
+    #decisions table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    #decisions td { padding: 5px 6px; border-bottom: 1px solid #eee; }
+    #decisions td.reason { color: #666; white-space: nowrap; }
+    #decisions tr.clickable { cursor: pointer; }
+    #decisions tr.clickable:hover { background: #f2f6fb; }
     button { margin-right: 8px; }
   </style>
 </head>
