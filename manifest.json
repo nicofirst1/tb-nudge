@@ -1,0 +1,27 @@
+{
+  "manifest_version": 2,
+  "name": "tb-nudge",
+  "version": "0.1.0",
+  "description": "Nudges you about sent emails that never got a reply.",
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "tb-nudge@nbrandizzi.local",
+      "strict_min_version": "128.0"
+    }
+  },
+  "permissions": [
+    "accountsRead",
+    "messagesRead",
+    "notifications",
+    "storage",
+    "alarms"
+  ],
+  "background": {
+    "scripts": ["lib.js", "background.js"],
+    "persistent": true
+  },
+  "options_ui": {
+    "page": "options.html",
+    "open_in_tab": false
+  }
+}

@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <style>
+    body { font: 13px sans-serif; padding: 10px; width: 260px; }
+    label { display: block; margin-top: 10px; }
+    input { width: 60px; }
+    #status { margin-top: 10px; color: green; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <label>
+    Nudge me after (hours)
+    <input type="number" id="hoursThreshold" min="1" />
+  </label>
+  <label>
+    Stop looking back after (days)
+    <input type="number" id="lookbackDays" min="1" />
+  </label>
+  <button id="save">Save</button>
+  <div id="status"></div>
+  <script src="options.js"></script>
+</body>
+</html>
