@@ -92,3 +92,14 @@ async function getBodyText(messageId) {
   const full = await browser.messages.getFull(messageId, { decodeContent: true });
   return extractPlainText(full);
 }
+
+// message.id can go stale between when we scan a message and when the user
+// later clicks to open it (IMAP resync/reindex reassigns internal ids and
+// opening a stale one throws NS_MSG_ERROR_FOLDER_MISSING). headerMessageId
+// (the actual RFC Message-ID) is stable, so re-look-up the CURRENT id right
+// before opening instead of trusting whatever id we stored earlier.
+async function resolveCurrentMessageId(headerMessageId) {
+  if (!headerMessageId) return null;
+  const list = await browser.messages.query({ headerMessageId });
+  return list.messages && list.messages[0] ? list.messages[0].id : null;
+}

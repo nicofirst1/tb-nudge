@@ -12,13 +12,18 @@ function buildTable(items) {
     row.title = "Open this email";
     row.addEventListener("click", async () => {
       try {
-        // Force a body fetch before opening - messageDisplay.open() seems not
-        // to trigger the same on-demand IMAP body fetch that clicking a
-        // message in the normal UI does, leaving the body blank.
-        await browser.messages.getFull(d.id, { decodeContent: true });
-        await browser.messageDisplay.open({ messageId: d.id, location: "window" });
+        // Re-resolve the CURRENT message.id from the stable Message-ID header
+        // instead of trusting d.id, which can go stale (IMAP resync/reindex)
+        // and throw NS_MSG_ERROR_FOLDER_MISSING when opened.
+        const messageId = await resolveCurrentMessageId(d.headerMessageId);
+        if (!messageId) {
+          alert("Could not find this email anymore - it may have moved or been deleted.");
+          return;
+        }
+        await browser.messages.getFull(messageId, { decodeContent: true });
+        await browser.messageDisplay.open({ messageId, location: "window" });
       } catch (err) {
-        console.error("tb-nudge: failed to open message", d.id, err);
+        console.error("tb-nudge: failed to open message", d, err);
         alert(`Could not open this email: ${err.message}`);
       }
     });

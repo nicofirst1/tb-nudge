@@ -103,7 +103,9 @@ async function notifyFollowUp(message, notifiedMap, topWords) {
     title: "No reply yet",
     message: `${message.subject || "(no subject)"}\nto ${(message.recipients || []).join(", ")}${reasonLine}`,
   });
-  notifiedMap[notifId] = message.id;
+  // Store headerMessageId (stable), not message.id (can go stale by the time
+  // the user clicks - see onClicked below).
+  notifiedMap[notifId] = message.headerMessageId;
   // Persist immediately: onClicked can fire while runCheck() is still mid-scan
   // (still processing other folders/messages), before the batched write at the
   // end of runCheck() would otherwise happen - clicking during that window read
@@ -150,16 +152,34 @@ async function runCheck() {
       if (replied) {
         handled.add(message.id);
         alreadyReplied++;
-        decisions.push({ id: message.id, subject: message.subject, outcome: "already replied", words: [] });
+        decisions.push({
+          id: message.id,
+          headerMessageId: message.headerMessageId,
+          subject: message.subject,
+          outcome: "already replied",
+          words: [],
+        });
       } else {
         const result = await classify(message);
         if (result.needsReply) {
           await notifyFollowUp(message, notifiedMap, result.topWords);
           notified++;
-          decisions.push({ id: message.id, subject: message.subject, outcome: "nudged", words: result.topWords });
+          decisions.push({
+            id: message.id,
+            headerMessageId: message.headerMessageId,
+            subject: message.subject,
+            outcome: "nudged",
+            words: result.topWords,
+          });
         } else {
           suppressedByClassifier++;
-          decisions.push({ id: message.id, subject: message.subject, outcome: "suppressed", words: result.bottomWords });
+          decisions.push({
+            id: message.id,
+            headerMessageId: message.headerMessageId,
+            subject: message.subject,
+            outcome: "suppressed",
+            words: result.bottomWords,
+          });
         }
         handled.add(message.id); // either notified, or classifier says it didn't need a reply
       }
@@ -179,17 +199,18 @@ async function runCheck() {
 
 browser.notifications.onClicked.addListener(async (notifId) => {
   const notifiedMap = await getNotifiedMap();
-  const messageId = notifiedMap[notifId];
-  if (messageId) {
-    // Force a body fetch before opening - messageDisplay.open() seems not to
-    // trigger the same on-demand IMAP body fetch that clicking a message in
-    // the normal UI does, leaving the body blank.
-    await browser.messages.getFull(messageId, { decodeContent: true });
-    // location: "window", not "tab" - the background page has no window of
-    // its own to open a tab in, so a standalone message window is the only
-    // unambiguous target.
-    await browser.messageDisplay.open({ messageId, location: "window" });
-  }
+  const headerMessageId = notifiedMap[notifId];
+  if (!headerMessageId) return;
+  // Re-resolve the CURRENT message.id from the stable Message-ID header
+  // rather than trusting a stored id, which can go stale (IMAP resync/
+  // reindex) and throw NS_MSG_ERROR_FOLDER_MISSING when opened.
+  const messageId = await resolveCurrentMessageId(headerMessageId);
+  if (!messageId) return; // message moved/deleted since it was nudged
+  await browser.messages.getFull(messageId, { decodeContent: true });
+  // location: "window", not "tab" - the background page has no window of
+  // its own to open a tab in, so a standalone message window is the only
+  // unambiguous target.
+  await browser.messageDisplay.open({ messageId, location: "window" });
 });
 
 browser.alarms.onAlarm.addListener((alarm) => {
