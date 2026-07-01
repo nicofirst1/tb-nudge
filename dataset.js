@@ -38,7 +38,13 @@ async function buildDataset(log) {
         const replyText = await getBodyText(reply.id);
         if (isCloseout(replyText)) {
           const text = await getBodyText(message.id);
-          rows.push({ label: 0, subject: message.subject, text: stripQuoteTail(text) });
+          const ownText = stripQuoteTail(text);
+          if (looksLikeRequest(ownText)) {
+            // a short reply to OUR question isn't a closeout, it's an answer
+            skippedAmbiguous++;
+          } else {
+            rows.push({ label: 0, subject: message.subject, text: ownText });
+          }
         } else {
           skippedAmbiguous++;
         }

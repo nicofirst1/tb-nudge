@@ -1,5 +1,12 @@
 const assert = require("assert");
-const { normalizeSubject, extractEmail, isLikelyReply, stripQuoteTail, isCloseout } = require("./lib.js");
+const {
+  normalizeSubject,
+  extractEmail,
+  isLikelyReply,
+  stripQuoteTail,
+  isCloseout,
+  looksLikeRequest,
+} = require("./lib.js");
 
 assert.strictEqual(normalizeSubject("Re: Hello"), "hello");
 assert.strictEqual(normalizeSubject("FWD: Hello"), "hello");
@@ -77,5 +84,20 @@ assert.strictEqual(
   "a long message with a further ask is not a closeout"
 );
 assert.strictEqual(isCloseout(""), false, "empty text is not a closeout");
+
+// Real cases the dataset spot-check found mislabeled as "didn't need a reply"
+assert.strictEqual(looksLikeRequest("Are you free for a call now?"), true);
+assert.strictEqual(looksLikeRequest("What about the 30th?"), true);
+assert.strictEqual(looksLikeRequest("Can you send me a link please?"), true);
+assert.strictEqual(
+  looksLikeRequest("Could you let us know who should issue such submission please."),
+  true
+);
+assert.strictEqual(looksLikeRequest("You should have received the paper, is that correct?"), true);
+
+// Genuine closeouts should still pass through
+assert.strictEqual(looksLikeRequest("Sounds good, thanks!"), false);
+assert.strictEqual(looksLikeRequest("Great, see you then."), false);
+assert.strictEqual(looksLikeRequest(""), false);
 
 console.log("ok - all lib.js tests passed");

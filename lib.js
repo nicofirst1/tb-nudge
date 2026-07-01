@@ -57,6 +57,26 @@ function isCloseout(text) {
   return wordCount <= 12 || CLOSEOUT_PHRASES.test(own);
 }
 
+const REQUEST_PHRASES =
+  /\b(can you|could you|would you|please|let me know|should i|who should|do you know|is that correct|is this correct|can we|could we)\b/i;
+
+// A short reply to a real question ("The 30th works") looks identical to a
+// short closing acknowledgment ("Thanks!") by word count alone. Before
+// trusting isCloseout() as a negative-label signal, check the SENT message
+// itself isn't the one asking something.
+function looksLikeRequest(text) {
+  const own = stripQuoteTail(text);
+  if (!own) return false;
+  return own.includes("?") || REQUEST_PHRASES.test(own);
+}
+
 if (typeof module !== "undefined") {
-  module.exports = { normalizeSubject, extractEmail, isLikelyReply, stripQuoteTail, isCloseout };
+  module.exports = {
+    normalizeSubject,
+    extractEmail,
+    isLikelyReply,
+    stripQuoteTail,
+    isCloseout,
+    looksLikeRequest,
+  };
 }
